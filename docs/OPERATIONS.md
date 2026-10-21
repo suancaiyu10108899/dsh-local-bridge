@@ -36,6 +36,18 @@ $cli = "$env:USERPROFILE\.dsh\profiles\web\node_modules\.bin\dsh-local-bridge.cm
 
 - 从源码/`link:` 安装时，运行态仍在 checkout 的 `.local/runtime`。
 - 需要显式覆盖时设置 `LAB_BRIDGE_RUNTIME_DIR`，并保证 Hub 与插件使用同一个值。
+- Hub 子进程异常退出时，companion 按 `1s→2s→5s→10s→30s` 有界退避自动重启；只重启自己拥有的子进程，不碰外部 Hub。达到最大尝试次数后停止重试并在状态中显示 `auto_restart_halted=true`。
+
+## Companion 健康与恢复（只读）
+
+```powershell
+node bin/lab-bridge.mjs service-status
+# 或在 DSH 对话中使用：bridge_service_status
+```
+
+- `service-status` 读取 Hub `server.json`、receiver status 和运行态路径，不启动/停止/续期任何东西。
+- DSH 工具 `bridge_service_status` 额外显示插件连接状态、`manageHub` 是否开启、managed Hub 的 `restart_count/next_restart_at/last_exit`。
+- `check` 仍负责可达性/配对/adapter/receiver warning；`service-status` 更偏 companion 本机状态。
 
 ## 接收端状态（只读）
 
@@ -59,6 +71,11 @@ node bin/lab-bridge.mjs status --to 'codex:<thread>' --state queued
 ```powershell
 node bin/lab-bridge.mjs pair add 'dsh:session-<session-id>' --label 'DSH session'
 node bin/lab-bridge.mjs pair list
+
+# 已安装 bundle 时也可用 profile 内的 CLI（运行态为 $DSH_HOME/local-agent-bridge/runtime）：
+$cli = "$env:USERPROFILE\.dsh\profiles\web\node_modules\.bin\dsh-local-bridge.cmd"
+& $cli pair add 'dsh:session-<session-id>' --label 'DSH session'
+& $cli pair list
 ```
 
 移除：

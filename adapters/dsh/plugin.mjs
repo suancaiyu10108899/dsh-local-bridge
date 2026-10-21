@@ -13,6 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { HubClient } from '../../src/client.mjs';
 import { createHubService } from '../../src/hub-service.mjs';
+import { collectServiceStatus } from '../../src/service-status.mjs';
 import { RUNTIME_DIR, loadConfig, readToken } from '../../src/runtime.mjs';
 
 export const name = 'local-agent-bridge';
@@ -243,7 +244,7 @@ export function fallbackToolDefinition(spec) {
   };
 }
 
-function registerTools({ ctx, defineTool, identity, getClient }) {
+function registerTools({ ctx, defineTool, identity, getClient, getServiceStatus }) {
   const buildTool = (spec) => (defineTool !== undefined ? defineTool(spec) : fallbackToolDefinition(spec));
   const requireClient = () => {
     const client = getClient();
@@ -333,6 +334,19 @@ function registerTools({ ctx, defineTool, identity, getClient }) {
       }
     },
   }));
+  ctx.tools.register(buildTool({
+    name: 'bridge_service_status',
+    description: 'Read-only status of the local bridge companion: managed Hub process, Hub health, connection state, and optional receiver windows. Does not start, stop, renew or modify anything.',
+    parameters: {},
+    output: { schema: { type: 'json' } },
+    async execute() {
+      try {
+        return { ok: true, ...getServiceStatus() };
+      } catch (error) {
+        return { ok: false, code: error.code ?? 'service-status-failed', message: String(error?.message ?? error) };
+      }
+    },
+  }));
 }
 
 /** Cordis plugin entry. */
@@ -411,7 +425,18 @@ export async function apply(ctx, config = {}) {
   // Tools are registered even when the native package import failed: the
   // fallback definition reproduces the same ctx.tools.register contract.
   try {
-    registerTools({ ctx, defineTool, identity, getClient: () => currentClient });
+    registerTools({
+      ctx,
+      defineTool,
+      identity,
+      getClient: () => currentClient,
+      getServiceStatus: () => ({
+        ...collectServiceStatus({ runtimeDir: RUNTIME_DIR }),
+        manage_hub_enabled: managedHub !== null,
+        hub_client_connected: currentClient !== null && currentClient.closed !== true,
+        managed_hub: managedHub === null ? null : managedHub.status(),
+      }),
+    });
     log('dsh-plugin/tools-registered', { identity, nativeDefineTool: defineTool !== undefined });
   } catch (error) {
     log('dsh-plugin/tool-registration-failed', { message: String(error?.message ?? error) });

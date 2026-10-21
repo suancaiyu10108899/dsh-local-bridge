@@ -1,6 +1,6 @@
 {
   "name": "dsh-local-bridge",
-  "version": "0.1.0-alpha.5",
+  "version": "0.1.0-alpha.6",
   "private": false,
   "description": "Durable same-machine messaging between DeepSeek Harness (DSH) conversations: local hub, DSH host plugin, CLI.",
   "type": "module",
