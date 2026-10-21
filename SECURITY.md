@@ -1,27 +1,27 @@
-# Security Policy
+# 安全策略
 
-## Supported versions
+## 支持版本
 
-This is an alpha. Only the latest published `0.1.x` tag is supported; older tags may contain known issues.
+这是 alpha，仅支持最新发布的 `0.1.x` tag；旧 tag 可能包含已知问题。
 
-## Threat model
+## 威胁模型
 
-- The hub is designed for **loopback only** on a single-user machine.
-- Runtime state under `.local/` contains a bearer token and message history. Treat it as sensitive.
-- Pairing is an explicit allowlist; do not weaken it to "accept all" without a design discussion.
-- This project does not provide encryption at rest, remote access, multi-user isolation, or sandboxing.
+- Hub 仅面向**单用户、loopback**场景设计。
+- `.local/` 中的运行态包含 bearer token 和消息历史，应视为敏感数据。
+- 配对是显式白名单；不要在没有设计讨论的情况下改成“接受所有”。
+- 本项目不提供静态加密、远程访问、多用户隔离或沙箱。
 
-## Reporting a vulnerability
+## 报告漏洞
 
-Please **do not open a public issue** for security problems.
+**不要**为安全问题开公开 issue。
 
-- Use GitHub's private vulnerability reporting on this repository, if available.
-- If that is unavailable, open a minimal issue asking the maintainer for a private channel **without** including exploit details.
+- 优先使用 GitHub 的私有漏洞报告（若仓库启用）。
+- 若不可用，开一个最小 issue 请维护者提供私密渠道，**不要**包含利用细节。
 
-Include:
-- affected version/tag;
-- impact and prerequisites;
-- minimal reproduction;
-- suggested fix, if any.
+请包含：
+- 受影响版本/tag；
+- 影响与前置条件；
+- 最小复现；
+- 如有建议修复。
 
-Please allow a reasonable amount of time before disclosure. There is no bug bounty.
+请给合理的时间窗口再公开披露。没有赏金计划。

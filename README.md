@@ -1,80 +1,82 @@
 # DSH Local Bridge
 
-> Durable, same-machine messaging between DeepSeek Harness (DSH) conversations, using a small local hub and a DSH host plugin.
+简体中文 | [English](README.en.md)
 
-**Status: alpha / research preview.** This is a personal, Windows-focused project, not a polished product. The supported surface is deliberately narrow. Read [What this is not](#what-this-is-not) before using it.
+> 同一台 Windows 机器上，为多个 DeepSeek Harness（DSH）对话提供持久、可审计的本地消息投递与唤醒。
 
-## What this is
+**状态：alpha / 研究预览。** 这是一个个人向、Windows 优先的项目，不是成熟产品；支持面刻意保持很窄。使用前请先读“这不是什么”。
 
-- A **local hub** on `127.0.0.1` with durable state, message TTL, retries, dedupe, pairing, and an audit event log.
-- A **DSH host plugin** that delivers inbound messages into the exact live DSH conversation and exposes `bridge_send`, `bridge_status`, and `bridge_targets` tools.
-- A **CLI** for hub lifecycle, pairing, sending, status, consumption, and reversible plugin install/uninstall.
-- Built for one OS user running multiple DSH conversations on the same Windows machine.
+## 这是什么
 
-Successful delivery means "the target DSH conversation received the message and a model turn was started". Message acceptance alone is not delivery proof.
+- 一个只监听 `127.0.0.1` 的**本地 Hub**：持久状态、TTL、重试、去重、配对白名单、审计事件。
+- 一个 **DSH 宿主插件**：把入站消息投递到精确的、存活的 DSH 会话，并注册 `bridge_send`、`bridge_status`、`bridge_targets` 工具。
+- 一个 **CLI**：Hub 生命周期、配对、发送、状态、消费，以及可逆的插件安装/卸载。
+- 面向同一台 Windows 机器上的单用户、多 DSH 对话。
 
-## What this is not
+“投递成功”的定义是：目标 DSH 对话收到消息，并且宿主启动了模型 turn。Hub 接受消息不等于投递成功。
 
-- Not a universal agent-to-agent protocol.
-- Not a cross-machine, cloud, or multi-user service.
-- Not an unattended Codex bridge. The Codex native queue receiver is experimental, build-specific, and **excluded from this alpha**.
-- Not a GUI or a hosted product.
-- No guarantee of compatibility with DSH versions other than the tested build.
-- No promise of "open box" support for every DSH conversation.
+## 这不是什么
 
-## Architecture
+- 不是通用 agent-to-agent 协议。
+- 不是跨机、云服务或多用户服务。
+- 不是无人值守的 Codex 桥。Codex native queue receiver 是实验性、强版本依赖的，**不包含在本 alpha 中**。
+- 不是 GUI，也不是托管产品。
+- 不保证兼容测试版本以外的 DSH 版本。
+- 不承诺“开箱即用”支持所有 DSH 对话。
+
+## 架构
 
 ```text
-DSH conversation A
-  └─ host plugin (outbound tool) ──┐
-                                   ▼
-                            local hub (127.0.0.1)
-                            durable queue, pairing,
-                            retries, TTL, audit
-                                   ▲
-DSH conversation B                │
-  └─ host plugin (inbound delivery, durable inbox ACK)
+DSH 对话 A
+  └─ 宿主插件（出站工具）──┐
+                          ▼
+                   本地 Hub（127.0.0.1）
+                   持久队列、配对、重试、
+                   TTL、审计
+                          ▲
+DSH 对话 B                │
+  └─ 宿主插件（入站投递，durable inbox ACK）
 ```
 
-The hub listens on loopback only. Pairing is an explicit allowlist: an unpaired identity cannot send or receive. Runtime state (token, queue, logs, plugin backups) lives under `.local/` and is never committed.
+Hub 只监听 loopback。配对是显式白名单：未配对身份不能发送或接收。运行态（令牌、队列、日志、插件备份）在 `.local/`，永不提交。
 
-## Requirements
+## 环境要求
 
-- Windows 10/11 (tested; other platforms are not supported in this alpha).
-- Node.js 22 or 24.
-- DSH Desktop 0.2.1-rc.2 (tested build; other versions may work but are unverified).
-- One OS user; one machine.
+- Windows 10/11（本 alpha 仅支持 Windows；已测试）。
+- Node.js 22 或 24。
+- DSH Desktop 0.2.1-rc.2（测试版本；其他版本可能可用但未验证）。
+- 单用户、单机。
 
-## Quickstart
+## 快速开始
 
-Replace `<session-id>` with an actual DSH session id. Run commands from the repository root.
+把 `<session-id>` 换成真实的 DSH 会话 ID。所有命令在仓库根目录执行。
 
 ```powershell
 node --test
 
-# Create local runtime config (token, hub state directory)
+# 创建本地运行配置（令牌、Hub 状态目录）
 node bin/lab-bridge.mjs init
 
-# Terminal 1: run the hub and keep it running
+# 终端 1：启动 Hub，并保持运行
 node hub/main.mjs
 
-# Terminal 2: verify reachability and pair a DSH conversation
+# 终端 2：检查可达性，并配对 DSH 会话
 node bin/lab-bridge.mjs check
 node bin/lab-bridge.mjs pair add 'dsh:session-<session-id>' --label 'DSH session'
 
-# Install the DSH host plugin (reversible; writes backups before editing the profile)
+# 安装 DSH 宿主插件（可逆；先写备份，再改 profile）
 node bin/lab-bridge.mjs install-dsh-plugin
 node bin/lab-bridge.mjs dsh-plugin-status
 ```
 
-From a paired DSH conversation:
+在已配对的 DSH 对话中：
 
 ```text
 bridge_send to='dsh:session-<session-id>' text='hello'
 bridge_status msg_id='<message-id>'
 ```
 
-CLI operations:
+CLI 操作：
 
 ```powershell
 node bin/lab-bridge.mjs send --to 'dsh:session-<session-id>' --text 'hello through the bridge'
@@ -82,46 +84,48 @@ node bin/lab-bridge.mjs status --msg-id <message-id>
 node bin/lab-bridge.mjs consume --msg-id <message-id> --consumer 'dsh:session-<session-id>' --note 'handled'
 ```
 
-## Uninstall
+## 卸载
 
 ```powershell
 node bin/lab-bridge.mjs uninstall-dsh-plugin
 ```
 
-The installer keeps byte-level backups and only removes its own profile rows. If the profile was edited externally, the installer refuses to overwrite the conflict and asks for manual review.
+安装器会保留字节级备份，只移除本项目自己的 profile 行；如果 profile 被外部修改，会拒绝覆盖冲突并提示人工检查。
 
-## Security model
+## 安全模型
 
-- Hub listens on loopback only; no remote listener.
-- A per-hub 64-hex token protects the control/data connection.
-- Pairing is an explicit allowlist; unpaired senders/targets are rejected.
-- `.local/` contains tokens, queue state, and logs; it is gitignored.
-- Do not share `.local/` or paste its contents into issues.
+- Hub 只监听 loopback，不提供远程监听。
+- 每个 Hub 使用 64 位十六进制令牌保护控制/数据连接。
+- 配对是显式白名单；未配对的发送方/目标会被拒绝。
+- `.local/` 含令牌、队列状态和日志，已加入 `.gitignore`。
+- 不要把 `.local/` 内容或令牌贴进 issue。
 
-## Limitations (alpha)
+## 限制（alpha）
 
-- One machine, one OS user; not a service.
-- Manual pairing; no discovery wizard.
-- CLI only; no GUI.
-- DSH profile mutation is version-sensitive; keep the generated backups.
-- Codex native queue receiver is excluded from this alpha.
-- Experimental Codex native queue receiver, MCP App, and host-management modules are excluded from this alpha.
-- No independent cold-machine validation yet.
-- API and state formats may change between 0.x releases.
-- Support is best-effort; there is no SLA.
+- 单机、单用户；不是服务。
+- 手动配对；没有自动发现向导。
+- 只有 CLI，没有 GUI。
+- DSH profile 改动对版本敏感；请保留安装器生成的备份。
+- Codex native queue receiver 不包含在本 alpha。
+- Codex、MCP App、host-management 模块均为排除项。
+- 尚未做独立冷机验证。
+- 0.x 版本之间 API/状态格式可能变化。
+- 支持为尽力而为，无 SLA。
 
-## Documentation
+## 文档
 
-- [Architecture](docs/ARCHITECTURE.md)
-- [Operations](docs/OPERATIONS.md)
-- [Capability matrix](docs/CAPABILITY-MATRIX.md)
-- [Contributing](CONTRIBUTING.md)
-- [Security policy](SECURITY.md)
+- [架构](docs/ARCHITECTURE.md)
+- [运维](docs/OPERATIONS.md)
+- [能力矩阵](docs/CAPABILITY-MATRIX.md)
+- [贡献指南](CONTRIBUTING.md)
+- [安全策略](SECURITY.md)
 
-## Contributing
+英文翻译：[README.en.md](README.en.md)、[docs/en](docs/en/)。
 
-Early feedback and small fixes are welcome. Start with an issue before a large PR. See [CONTRIBUTING.md](CONTRIBUTING.md).
+## 贡献
 
-## License
+欢迎早期反馈和小修复。大 PR 前先开 issue。见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
-MIT. See [LICENSE](LICENSE).
+## 许可证
+
+MIT。见 [LICENSE](LICENSE)。

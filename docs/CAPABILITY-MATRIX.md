@@ -1,29 +1,29 @@
-# Capability matrix (public alpha)
+# 能力矩阵（公开 alpha）
 
-| Capability | Status | Notes |
+| 能力 | 状态 | 备注 |
 |---|---|---|
-| Local hub, loopback + token | Supported | Single OS user |
-| Durable queue/state/events | Supported | `.local/runtime/hub/` |
-| Pairing allowlist | Supported | Manual; unpaired send/receive rejected |
-| CLI send/status/consume/pair | Supported | Windows PowerShell examples |
-| DSH host plugin + tools | Supported | Tested against DSH Desktop 0.2.1-rc.2 |
-| DSH inbound delivery + wake | Supported | Delivery ACK after durable inbox event |
-| DSH↔DSH cross-session messaging | Supported | Manual pairing; one machine |
-| Retry/TTL/dedupe | Supported | Retry does not prove delivery |
-| Hub restart persistence | Supported | Foreground process; no service |
-| Reversible plugin install/uninstall | Supported | Byte-level backups where safe |
-| Multiple targets | Not supported | One target per message; no routing |
-| Cross-machine / cloud | Not supported | Loopback only |
-| GUI / settings UI | Not supported | CLI only |
-| Unattended service / autostart | Not supported | Manual start |
-| Codex native queue receiver | Experimental, excluded | Build-specific; separate lane |
-| MCP App integration | Not supported | Separate experiment |
-| Host-management tools | Not included in this alpha | Excluded to keep the supported surface small |
-| Independent cold-machine validation | Not done | Please report your environment |
+| 本地 Hub，loopback + token | 支持 | 单用户 |
+| 持久队列/状态/事件 | 支持 | `.local/runtime/hub/` |
+| 配对白名单 | 支持 | 手动；未配对发送/接收被拒绝 |
+| CLI send/status/consume/pair | 支持 | Windows PowerShell 示例 |
+| DSH 宿主插件 + 工具 | 支持 | 针对 DSH Desktop 0.2.1-rc.2 测试 |
+| DSH 入站投递 + 唤醒 | 支持 | durable inbox 事件后才 ACK |
+| DSH↔DSH 跨会话消息 | 支持 | 手动配对；单机 |
+| 重试/TTL/去重 | 支持 | 重试不代表投递成功 |
+| Hub 重启持久化 | 支持 | 前台进程；无服务 |
+| 可逆插件安装/卸载 | 支持 | 安全时按字节备份 |
+| 多目标 | 不支持 | 每条消息一个目标；无路由 |
+| 跨机 / 云 | 不支持 | 仅 loopback |
+| GUI / 设置界面 | 不支持 | 只有 CLI |
+| 无人值守服务 / 自启动 | 不支持 | 手动启动 |
+| Codex native queue receiver | 实验性，未包含 | 强版本依赖；另有独立 lane |
+| MCP App 集成 | 不支持 | 独立实验 |
+| host-management 工具 | 未包含在本 alpha | 为缩小支持面而排除 |
+| 独立冷机验证 | 未做 | 欢迎报告你的环境 |
 
-## Delivery semantics
+## 投递语义
 
-- `accepted`: durably queued.
-- `delivered`: target adapter acknowledged; for DSH, only after durable inbox write.
-- A model turn starting is the host's responsibility; the bridge does not claim task completion.
-- `delivery_unknown`: not proof of success — inspect before retrying manually.
+- `accepted`：已持久入队。
+- `delivered`：目标 adapter 已确认；DSH 侧仅在 durable inbox 写入后。
+- 模型 turn 是否启动是宿主的职责；桥接不声称任务完成。
+- `delivery_unknown`：不是成功证明——重试前先检查。

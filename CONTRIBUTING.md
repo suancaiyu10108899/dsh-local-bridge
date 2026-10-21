@@ -1,41 +1,41 @@
-# Contributing
+# 贡献指南
 
-Thanks for looking. This is an early alpha; small, focused contributions are most useful.
+感谢关注。这是一个早期 alpha，小而聚焦的贡献最有价值。
 
-## Before you start
+## 开始前
 
-- Read the README and the "Limitations" section.
-- For a bug, open an issue first with:
-  - what you expected;
-  - what happened;
-  - steps to reproduce;
-  - OS, Node version, DSH version;
-  - the relevant error text **without tokens, `.local/` contents, or personal paths**.
-- For a feature, open a short issue describing the user problem before writing code. Large unsolicited PRs may be declined to keep the alpha scope small.
+- 先读 README 和“限制”一节。
+- 报 bug 请先开 issue，包含：
+  - 预期的行为；
+  - 实际发生的情况；
+  - 复现步骤；
+  - 操作系统、Node 版本、DSH 版本；
+  - 相关错误文本（**不要**包含 token、`.local/` 内容或个人信息）。
+- 提 feature 请先开一个简短 issue 说明用户问题，再写代码。大而全的未沟通 PR 可能因为维护 alpha 范围而被拒。
 
-## Development setup
+## 开发环境
 
 ```powershell
-node --version   # 22 or 24
+node --version   # 22 或 24
 node --test
 ```
 
-The test suite uses temporary directories and does not require a running hub or a real DSH profile. Do not commit `.local/`, logs, tokens, or machine-specific paths.
+测试使用临时目录，不需要运行中的 Hub 或真实 DSH profile。不要提交 `.local/`、日志、token 或机器路径。
 
-## Pull requests
+## Pull Request
 
-1. Keep the change small and focused.
-2. Add or update tests for behavior changes.
-3. Update `CHANGELOG.md` for user-visible changes.
-4. Run `node --test` and make sure it passes.
-5. Describe the change and the limitation/risk it introduces.
+1. 改动小而聚焦。
+2. 行为变更要加/改测试。
+3. 用户可见变更更新 `CHANGELOG.md`。
+4. 跑 `node --test` 并确保通过。
+5. 说明改动的边界/风险。
 
-## Scope rules
+## 范围规则
 
-- This alpha supports DSH-side messaging only.
-- Do not add Codex native queue receiver, MCP App, multi-target, unattended service, or GUI claims without a separate design discussion.
-- "Delivered" means the target conversation received the message and a model turn started; do not redefine it as "task completed".
+- 本 alpha 只支持 DSH 侧消息。
+- 未经单独设计讨论，不要加入 Codex native queue receiver、MCP App、多目标、无人值守服务或 GUI 承诺。
+- “投递”意味着目标对话收到消息并启动 turn；不要把它重新定义为“任务完成”。
 
-## Support expectations
+## 支持预期
 
-Best-effort, no SLA. Response may take weeks. Please be patient and keep discussions technical.
+尽力而为，无 SLA。响应可能需要数周。请保持讨论技术化。
