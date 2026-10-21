@@ -12,6 +12,41 @@ node bin/lab-bridge.mjs check   # 终端 2
 
 `init` 创建 `.local/runtime/hub/`、令牌和空状态。使用桥接期间保持 Hub 运行。
 
+## 作为 DSH bundle 安装
+
+```powershell
+# GitHub（需要 DSH 0.2.1-rc.2）
+dsh plugin --profile web add github:suancaiyu10108899/dsh-local-bridge
+# 或本地路径
+dsh plugin --profile web add D:\Dev\dsh-local-bridge-public
+```
+
+- bundle 安装只注册插件；本 alpha **不自动启动 Hub**。
+- 已安装 bundle 的运行态在 `$DSH_HOME/local-agent-bridge/runtime`（不是 node_modules 内）。
+- 用安装后的 CLI 初始化并启动 Hub：
+
+```powershell
+$cli = "$env:USERPROFILE\.dsh\profiles\web\node_modules\.bin\dsh-local-bridge.cmd"
+& $cli init
+& $cli serve
+```
+
+- 从源码/`link:` 安装时，运行态仍在 checkout 的 `.local/runtime`。
+- 需要显式覆盖时设置 `LAB_BRIDGE_RUNTIME_DIR`，并保证 Hub 与插件使用同一个值。
+
+## 接收端状态（只读）
+
+```powershell
+node bin/lab-bridge.mjs receiver-status
+node bin/lab-bridge.mjs check
+node bin/lab-bridge.mjs status --to 'codex:<thread>' --state queued
+```
+
+- `receiver-status` 只读取 `.local/runtime/codex/*/status.json`，不会启动、续期、停止或修改 receiver。
+- `check` 在存在已配对 Codex 目标但 receiver 不存在/过期/停止时给出 warning。
+- `status` 对排队中的 Codex 消息给出 `delivery_hint`：receiver absent/expired/waiting/ready 等。
+- 本 alpha 不包含 receiver 本体；receiver 的 enable/disable/renew 是下一阶段工作。
+
 ## 配对
 
 双向都需要配对。已配对身份才允许发送和接收。

@@ -22,6 +22,7 @@ import path from 'node:path';
 import {
   CONFIG_FILE,
   HUB_DIR,
+  RUNTIME_DIR,
   SERVER_INFO_FILE,
   STATE_FILE,
   TOKEN_FILE,
@@ -30,6 +31,7 @@ import {
   loadConfig,
   readToken,
 } from '../src/runtime.mjs';
+import { attachDeliveryHints, readReceiverStatuses } from '../src/receiver-status.mjs';
 import { withHubClient } from '../src/client.mjs';
 import { identityRole, isValidIdentity, newMessageId } from '../src/protocol.mjs';
 import {
@@ -185,7 +187,9 @@ async function main() {
           limit: flags.limit === undefined ? 50 : Number(flags.limit),
         });
       });
-      out({ ok: true, count: messages.length, messages });
+      const receiverStatus = readReceiverStatuses({ runtimeDir: RUNTIME_DIR });
+      const hinted = attachDeliveryHints(messages, receiverStatus);
+      out({ ok: true, count: hinted.length, receivers: receiverStatus.receivers, messages: hinted });
       return;
     }
     case 'targets': {
@@ -274,8 +278,14 @@ async function main() {
       }
       return;
     }
+    case 'receiver-status': {
+      const status = readReceiverStatuses({ runtimeDir: RUNTIME_DIR });
+      out({ ok: true, ...status });
+      return;
+    }
     case 'check': {
       const report = { ok: false, checks: {} };
+      let pairedTargets = [];
       report.checks.token = fs.existsSync(TOKEN_FILE) ? 'present' : 'missing (run init or serve once)';
       report.checks.config = fs.existsSync(CONFIG_FILE) ? 'present' : 'missing (init creates defaults)';
       const health = serverInfoHealth({ serverInfoFile: SERVER_INFO_FILE });
@@ -298,6 +308,7 @@ async function main() {
         report.checks.pairing_count = snapshot.targets.length;
         report.checks.pairing_enabled = snapshot.targets.filter((target) => target.enabled === true).length;
         report.checks.pairing = snapshot.targets;
+        pairedTargets = snapshot.targets;
       } catch (error) {
         report.hub = 'UNREACHABLE';
         report.error = { code: error.code ?? 'unknown', message: error.message };
@@ -313,6 +324,16 @@ async function main() {
         });
       } catch (error) {
         report.checks.dsh_plugin = { error: String(error?.message ?? error) };
+      }
+      const receiverStatus = readReceiverStatuses({ runtimeDir: RUNTIME_DIR });
+      report.checks.receiver_root = receiverStatus.root;
+      report.checks.receivers = receiverStatus.receivers;
+      if (pairedTargets.some((target) => String(target.identity).startsWith('codex:'))) {
+        if (receiverStatus.receivers.length === 0) {
+          warnings.push('a paired Codex target exists but no local receiver status was found; messages to Codex stay queued until a receiver window is started');
+        } else if (!receiverStatus.receivers.some((receiver) => receiver.active)) {
+          warnings.push('the local Codex receiver is expired, halted or stopped; messages to Codex stay queued until a receiver window is explicitly started');
+        }
       }
       if (warnings.length > 0) report.warnings = warnings;
       out(report);
@@ -340,6 +361,7 @@ async function main() {
           'module-watch-status [--profile PATH]',
           'enable-module-watch [--profile PATH]',
           'disable-module-watch [--profile PATH]',
+          'receiver-status',
           'check',
         ],
       });

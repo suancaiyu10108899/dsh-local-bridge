@@ -12,6 +12,9 @@
 | 重试/TTL/去重 | 支持 | 重试不代表投递成功 |
 | Hub 重启持久化 | 支持 | 前台进程；无服务 |
 | 可逆插件安装/卸载 | 支持 | 安全时按字节备份 |
+| DSH bundle 安装（GitHub/本地） | 支持（alpha） | 需要 DSH 0.2.1-rc.2；Hub 仍需手动启动 |
+| receiver 状态只读 | 支持 | `receiver-status` / `check` warning / `status` delivery_hint；不启动、不续期 |
+| receiver enable/disable/renew | 不支持 | 下一阶段生命周期工作 |
 | 多目标 | 不支持 | 每条消息一个目标；无路由 |
 | 跨机 / 云 | 不支持 | 仅 loopback |
 | GUI / 设置界面 | 不支持 | 只有 CLI |

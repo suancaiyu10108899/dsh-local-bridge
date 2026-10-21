@@ -1,0 +1,8 @@
+# Profile bundle layer for the DSH Local Bridge.
+# Installed as a profile dependency: the package root is the Cordis plugin entry
+# (see package.json "main"), and this row mounts it.
+- insert:
+    - id: local-agent-bridge
+      name: dsh-local-bridge
+      config:
+        enabled: true
