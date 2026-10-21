@@ -107,7 +107,6 @@ export function confirmDurable({ ctx, sessionId, messageId, timeoutMs = DEFAULT_
     };
     dispose = ctx.on('session/event', listener);
     timer = setTimeout(() => finish(false), timeoutMs);
-    timer.unref?.();
   });
 }
 
