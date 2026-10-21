@@ -1,0 +1,152 @@
+{
+  "schema": "codex-public-export-manifest/1",
+  "state": "SCOPED_SOURCE_EXPORT_MIT",
+  "code_baseline_commit": "c1da0015ab46e0ea9b6be154428c94c69d7d42ad",
+  "public_shared_core_baseline_commit": "04e6993b645c5968f373b894e4eb800d854b5a9b",
+  "public_shared_core_tag": "v0.1.0-alpha.6",
+  "files": [
+    {
+      "path": "adapters/codex/daily-receiver.mjs",
+      "source_commit": "c1da0015ab46e0ea9b6be154428c94c69d7d42ad",
+      "source_sha256": "32edc263ddeb3d2b5449a07047e7952b060adc3a0a060610177229fbe20f545c",
+      "sha256": "32edc263ddeb3d2b5449a07047e7952b060adc3a0a060610177229fbe20f545c",
+      "transform": []
+    },
+    {
+      "path": "adapters/codex/installed-cli.mjs",
+      "source_commit": "c1da0015ab46e0ea9b6be154428c94c69d7d42ad",
+      "source_sha256": "35657f02eedf2f5c9e1277ce2b92642c1006c4d6c5a095c5a87c8f3634182a0e",
+      "sha256": "35657f02eedf2f5c9e1277ce2b92642c1006c4d6c5a095c5a87c8f3634182a0e",
+      "transform": []
+    },
+    {
+      "path": "adapters/codex/queue-inbox.mjs",
+      "source_commit": "c1da0015ab46e0ea9b6be154428c94c69d7d42ad",
+      "source_sha256": "efd93b68b4f14f6232a765438b8bf529ceedf1e1506b2470274ec1d436187c9c",
+      "sha256": "efd93b68b4f14f6232a765438b8bf529ceedf1e1506b2470274ec1d436187c9c",
+      "transform": []
+    },
+    {
+      "path": "adapters/codex/queue-receiver.mjs",
+      "source_commit": "c1da0015ab46e0ea9b6be154428c94c69d7d42ad",
+      "source_sha256": "0225b4a317f7c631ea1565832da39965438fb9b15426be502ad58ee08630ee70",
+      "sha256": "0225b4a317f7c631ea1565832da39965438fb9b15426be502ad58ee08630ee70",
+      "transform": []
+    },
+    {
+      "path": "adapters/codex/receiver-control.mjs",
+      "source_commit": "c1da0015ab46e0ea9b6be154428c94c69d7d42ad",
+      "source_sha256": "791884dc81790e8809af4849cbe587af1c483b8c6f9a0116c74edd73b9edfb42",
+      "sha256": "791884dc81790e8809af4849cbe587af1c483b8c6f9a0116c74edd73b9edfb42",
+      "transform": []
+    },
+    {
+      "path": "adapters/codex/receiver-service.mjs",
+      "source_commit": "c1da0015ab46e0ea9b6be154428c94c69d7d42ad",
+      "source_sha256": "b7aa0466d16f265f8d0899cf391d3b3fd8d610c7e8a6ceb371e0bb492edd838c",
+      "sha256": "b7aa0466d16f265f8d0899cf391d3b3fd8d610c7e8a6ceb371e0bb492edd838c",
+      "transform": []
+    },
+    {
+      "path": "adapters/codex/receiver-startup.mjs",
+      "source_commit": "c1da0015ab46e0ea9b6be154428c94c69d7d42ad",
+      "source_sha256": "3cdf81a758c00977b269e22a75bcc29f3ab509b138c2cc53da5d3ca007877db9",
+      "sha256": "3cdf81a758c00977b269e22a75bcc29f3ab509b138c2cc53da5d3ca007877db9",
+      "transform": []
+    },
+    {
+      "path": "tests/codex-wake-daily.test.mjs",
+      "source_commit": "c1da0015ab46e0ea9b6be154428c94c69d7d42ad",
+      "source_sha256": "0d350b3ed0ac60b0553f5a694f18029b3eeb4ccdb94926944eff977601ec7a10",
+      "sha256": "78efcbb76970c285c35ecf1aa496122501dc3cf1e12370f82e7c582c439d4e80",
+      "transform": [
+        "replace real session/thread fixture with synthetic UUID",
+        "replace real session/thread fixture with synthetic UUID"
+      ]
+    },
+    {
+      "path": "tests/codex-wake-queue-receiver.test.mjs",
+      "source_commit": "c1da0015ab46e0ea9b6be154428c94c69d7d42ad",
+      "source_sha256": "84b06454c0686783c3d689bcf357767b32cc6690662b78044bd0a82a5713f8ba",
+      "sha256": "c0687397ea7e5ffd6fb724f98175c0f74e1faebe766eed4980897dff881a93c0",
+      "transform": [
+        "replace real session/thread fixture with synthetic UUID",
+        "replace real session/thread fixture with synthetic UUID"
+      ]
+    },
+    {
+      "path": "src/client.mjs",
+      "source_public_commit": "04e6993b645c5968f373b894e4eb800d854b5a9b",
+      "sha256": "093ac578d1215512da329517c44c6bf24806eaf99f5adfa44776ac7c5e9a9b0b",
+      "overwrite_existing_public_core": false
+    },
+    {
+      "path": "src/runtime.mjs",
+      "source_public_commit": "04e6993b645c5968f373b894e4eb800d854b5a9b",
+      "sha256": "d3198d30c2f6b16bdf03e495128407e64cae9ba407efc5a32bbb6c9b7f8c4f41",
+      "overwrite_existing_public_core": false
+    },
+    {
+      "path": "src/protocol.mjs",
+      "source_public_commit": "04e6993b645c5968f373b894e4eb800d854b5a9b",
+      "sha256": "230f38150a0607bfcced43af644fe497ad70fe2a67d34f73974e5c42ab6a4c0c",
+      "overwrite_existing_public_core": false
+    },
+    {
+      "path": "src/health.mjs",
+      "source_public_commit": "04e6993b645c5968f373b894e4eb800d854b5a9b",
+      "sha256": "ca251ed7d82e05c5265533d3bc258a1b9f2efc1befa324db1212d42c75a96587",
+      "overwrite_existing_public_core": false
+    },
+    {
+      "path": "src/store.mjs",
+      "source_public_commit": "04e6993b645c5968f373b894e4eb800d854b5a9b",
+      "sha256": "86460a0cda09439060a3312bd51717321898e12986ad9e8aa8b594974d6981ec",
+      "overwrite_existing_public_core": false
+    },
+    {
+      "path": "src/hub.mjs",
+      "source_public_commit": "04e6993b645c5968f373b894e4eb800d854b5a9b",
+      "sha256": "9acd542d8d9b0303c1875f82570ebc2039530d3732e4438cfe0e6a50c4fb7134",
+      "overwrite_existing_public_core": false
+    },
+    {
+      "path": "package.json",
+      "generated_for_review": true,
+      "sha256": "eef603aa9f34f7bbf017eb48b5ae65c1623ed9bf9d8a49185fa1f46da3e8f595",
+      "review_sha256": "44ac988feffd9b98d3e57f8503334a126ed15b66a9c03cb95727dc561df036c6",
+      "release_metadata_transform": "MIT license/name and approved-state wording only"
+    },
+    {
+      "path": "README-CODEX.md",
+      "generated_for_review": true,
+      "sha256": "e081bf667804ee7ee5001154c58f33507b6cd2458067bfc24a1f6b49d5844573",
+      "review_sha256": "7da0f62e58d986343f0ec3dc880aafdf5946ff007655f495be67b2f55e11406f",
+      "release_metadata_transform": "MIT license/name and approved-state wording only"
+    },
+    {
+      "path": "LICENSE",
+      "source_public_commit": "04e6993b645c5968f373b894e4eb800d854b5a9b",
+      "sha256": "ae3d6b809dd47425c016f7cd86f9f59aebd290e02dc7c1c7e12e9888f062e6f2"
+    }
+  ],
+  "not_exported": [
+    ".local/**",
+    "evidence/**",
+    "records/**",
+    "CLAUDE.md",
+    "AGENTS.md",
+    "prompts/**",
+    "docs/codex-ingress.md",
+    "adapters/codex/README.md",
+    "adapters/codex/queue-pilot.mjs",
+    "adapters/codex/mcp-app-probe.mjs",
+    "adapters/codex/probe-view.mjs",
+    "adapters/codex/mcp-project-config.example.toml",
+    "tests/codex-wake-queue-pilot.test.mjs",
+    "tests/codex-wake-mcp-probe.test.mjs"
+  ],
+  "new_host_manifests": [],
+  "license": "MIT",
+  "review_manifest_sha256": "22ad0ddf4df75e41133711f27ba0202ddde08eaa17e4fc968d98d5a28d3ac723"
+}

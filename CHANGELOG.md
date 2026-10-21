@@ -2,6 +2,21 @@
 
 本文件记录重要变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本遵循 SemVer。
 
+## [codex-receiver-v0.1.0-alpha.1] - 2026-10-22
+
+### 新增
+
+- 在既有公开仓加入可选实验性 `codex-receiver/` CLI receiver 源包（不进入 DSH bundle，不自动启动/登录/扩目标）。
+- 精确导出批准：真人批准、MIT；source 固定 `c1da0015ab46e0ea9b6be154428c94c69d7d42ad`；7 个 Codex 模块 + 2 个脱敏 tests + 说明/manifest/LICENSE。
+- 公开集成基线为 `dsh-local-bridge` alpha.6（`04e6993`）；**不覆盖**公开 core `src/`；in-package `src/` 仅作为该 optional package 的 alpha.6 依赖基线。
+- 测试：可选包 23/23 PASS（Node 24.15）；根 DSH suite 82/82 PASS；CI 增加 Node 24.15 optional 包 job。
+
+### 说明
+
+- 无 npm 发布、无官方 Codex marketplace/plugin 挂载、无新仓库；不加入 probe/MCP manifest。
+- 真实第三方冷安装、登出/重启恢复、多日 soak、广泛升级矩阵仍 NOT_RUN；不宣称开箱即用。
+- 历史 executor-cell FAIL 与 sender-fixture 转义失败保留，不公开原日志。
+
 ## [0.1.0-alpha.6] - 2026-10-21
 
 ### 新增

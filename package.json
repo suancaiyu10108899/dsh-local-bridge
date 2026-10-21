@@ -19,7 +19,8 @@
     }
   },
   "scripts": {
-    "test": "node --test",
+    "test": "node --test tests/*.test.mjs",
+    "test:codex-receiver": "node --test codex-receiver/tests/*.test.mjs",
     "hub": "node hub/main.mjs",
     "cli": "node bin/lab-bridge.mjs",
     "check": "node bin/lab-bridge.mjs check"

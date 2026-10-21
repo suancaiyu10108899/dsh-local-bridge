@@ -21,7 +21,7 @@
 | 跨机 / 云 | 不支持 | 仅 loopback |
 | GUI / 设置界面 | 不支持 | 只有 CLI |
 | 无人值守服务 / 自启动 | 不支持 | 插件可托管 Hub，但宿主本身不自启动 |
-| Codex native queue receiver | 实验性，未包含 | 强版本依赖；另有独立 lane |
+| Codex native queue receiver | 实验性，公共仓可选源码 | `codex-receiver/`，MIT、精确导出、独立测试；不被 DSH bundle 安装/启动，无 marketplace |
 | MCP App 集成 | 不支持 | 独立实验 |
 | host-management 工具 | 未包含在本 alpha | 为缩小支持面而排除 |
 | 独立冷机验证 | 未做 | 欢迎报告你的环境 |

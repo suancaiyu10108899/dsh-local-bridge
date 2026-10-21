@@ -4,6 +4,21 @@
 
 All notable changes are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows SemVer.
 
+## [codex-receiver-v0.1.0-alpha.1] - 2026-10-22
+
+### Added
+
+- Added the optional experimental `codex-receiver/` CLI receiver source package to the existing public repository (not part of the DSH bundle; no auto-start/login/target expansion).
+- Exact export approval: direct human approval, MIT; source pinned to `c1da0015ab46e0ea9b6be154428c94c69d7d42ad`; 7 Codex modules + 2 sanitized tests + documentation/manifest/LICENSE.
+- Public integration baseline is `dsh-local-bridge` alpha.6 (`04e6993`); public `src/` is **not overwritten**; the in-package `src/` is only the optional package's alpha.6 dependency baseline.
+- Tests: optional package 23/23 PASS (Node 24.15); root DSH suite 82/82 PASS; CI adds a Node 24.15 optional-package job.
+
+### Notes
+
+- No npm publication, official Codex marketplace/plugin mounting, or new repository; no probe/MCP manifest.
+- Real third-party cold install, sign-out/reboot recovery, multi-day soak, and broad upgrade matrices remain NOT_RUN; no turnkey claim.
+- Historical executor-cell FAIL and sender-fixture escaping failure remain preserved; raw logs are not published.
+
 ## [0.1.0-alpha.6] - 2026-10-21
 
 ### Added

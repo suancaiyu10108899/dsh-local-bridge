@@ -21,7 +21,7 @@ Successful delivery means "the target DSH conversation received the message and 
 
 - Not a universal agent-to-agent protocol.
 - Not a cross-machine, cloud, or multi-user service.
-- Not an unattended Codex bridge. The Codex native queue receiver is experimental, build-specific, and **excluded from this alpha**.
+- Not an unattended Codex bridge. The Codex native queue receiver is experimental and build-specific; **the DSH bundle excludes it**. The public repository contains a separate optional source package that users must review, install and run themselves.
 - Not a GUI or a hosted product.
 - No guarantee of compatibility with DSH versions other than the tested build.
 - No promise of "open box" support for every DSH conversation.
@@ -113,6 +113,15 @@ With `manageHub: false`, start the Hub explicitly with `& $cli serve`.
 
 With a local `link:` checkout, runtime stays in the checkout's `.local/runtime`; keep using the source quickstart above.
 
+## Optional Codex receiver (experimental, not part of the DSH bundle)
+
+`codex-receiver/` in this repository is a standalone optional CLI receiver source package, exported from the approved exact Codex source allowlist (MIT, source `c1da001`). The DSH bundle does **not** install or start it, create a login entry, or expand targets.
+
+- Requirements: same-user Windows, Node `>=24.15.0`, a user-installed Codex CLI; `node:sqlite` and rollout format are version-sensitive.
+- Entry point and limits: [codex-receiver/README-CODEX.md](codex-receiver/README-CODEX.md).
+- Test separately: `node --test codex-receiver/tests/*.test.mjs`.
+- No npm publication or official Codex marketplace/plugin mounting; real third-party cold install, sign-out/reboot recovery, multi-day soak, and broad upgrade matrices remain NOT_RUN.
+
 ## Uninstall
 
 ```powershell
@@ -135,8 +144,8 @@ The installer keeps byte-level backups and only removes its own profile rows. If
 - Manual pairing; no discovery wizard.
 - CLI only; no GUI.
 - DSH profile mutation is version-sensitive; keep the generated backups.
-- Codex native queue receiver is excluded from this alpha.
-- Experimental Codex native queue receiver, MCP App, and host-management modules are excluded from this alpha.
+- The DSH bundle excludes the Codex native queue receiver; the repository provides a separate experimental optional source package, not a default install.
+- The DSH bundle excludes the experimental Codex native queue receiver; MCP App and host-management modules are excluded. An optional Codex receiver source package is present in `codex-receiver/` with its own experimental limits.
 - No independent cold-machine validation yet.
 - API and state formats may change between 0.x releases.
 - Support is best-effort; there is no SLA.

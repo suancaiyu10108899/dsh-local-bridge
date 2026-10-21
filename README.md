@@ -19,7 +19,7 @@
 
 - 不是通用 agent-to-agent 协议。
 - 不是跨机、云服务或多用户服务。
-- 不是无人值守的 Codex 桥。Codex native queue receiver 是实验性、强版本依赖的，**不包含在本 alpha 中**。
+- 不是无人值守的 Codex 桥。Codex native queue receiver 是实验性、强版本依赖的，**不包含在 DSH bundle 中**；public repo 另有一个独立的 optional source package，需用户自己审查/安装/运行。
 - 不是 GUI，也不是托管产品。
 - 不保证兼容测试版本以外的 DSH 版本。
 - 不承诺“开箱即用”支持所有 DSH 对话。
@@ -111,6 +111,15 @@ $cli = "$env:USERPROFILE\.dsh\profiles\web\node_modules\.bin\dsh-local-bridge.cm
 
 如果本地 checkout 用 `link:` 安装，运行态仍跟随 checkout 的 `.local/runtime`；从源码运行时继续使用上面的快速开始即可。
 
+## 可选 Codex receiver（实验性，不是 DSH bundle 的一部分）
+
+仓库里的 `codex-receiver/` 是独立的 optional CLI receiver 源包，按精确 allowlist 从已批准的 Codex 源导出（MIT，source `c1da001`）。它**不会**被 DSH bundle 自动安装或启动，不会创建登录项，也不会扩展目标。
+
+- 要求：Windows 同一用户、Node `>=24.15.0`、用户已安装的 Codex CLI；`node:sqlite` 和 rollout 格式是强版本依赖。
+- 入口与限制：[codex-receiver/README-CODEX.md](codex-receiver/README-CODEX.md)。
+- 单独测试：`node --test codex-receiver/tests/*.test.mjs`。
+- 没有 npm 发布、没有官方 Codex marketplace/plugin 挂载；真实第三方冷安装、登出/重启恢复、多日 soak、广泛升级矩阵仍是 NOT_RUN。
+
 ## 卸载
 
 源码安装：
@@ -143,8 +152,8 @@ Remove-Item -Recurse -Force "$env:USERPROFILE\.dsh\local-agent-bridge"
 - 手动配对；没有自动发现向导。
 - 只有 CLI，没有 GUI。
 - DSH profile 改动对版本敏感；请保留安装器生成的备份。
-- Codex native queue receiver 不包含在本 alpha。
-- Codex、MCP App、host-management 模块均为排除项。
+- Codex native queue receiver 不包含在 DSH bundle 中；仓库提供独立的 experimental optional source package，不是默认安装项。
+- DSH bundle 排除 experimental Codex native queue receiver；MCP App、host-management 模块仍排除。可选 Codex receiver 源包位于 `codex-receiver/`，有独立实验性限制。
 - 尚未做独立冷机验证。
 - 0.x 版本之间 API/状态格式可能变化。
 - 支持为尽力而为，无 SLA。
@@ -152,6 +161,7 @@ Remove-Item -Recurse -Force "$env:USERPROFILE\.dsh\local-agent-bridge"
 ## 文档
 
 - [产品形态](docs/PRODUCT.md)
+- [可选 Codex receiver](codex-receiver/README-CODEX.md)（实验性，独立于 DSH bundle）
 - [架构](docs/ARCHITECTURE.md)
 - [运维](docs/OPERATIONS.md)
 - [能力矩阵](docs/CAPABILITY-MATRIX.md)
