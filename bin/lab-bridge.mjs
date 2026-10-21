@@ -308,6 +308,7 @@ async function main() {
         report.checks.pairing_count = snapshot.targets.length;
         report.checks.pairing_enabled = snapshot.targets.filter((target) => target.enabled === true).length;
         report.checks.pairing = snapshot.targets;
+        report.checks.codex_adapter_present = snapshot.roles.includes('codex');
         pairedTargets = snapshot.targets;
       } catch (error) {
         report.hub = 'UNREACHABLE';
@@ -328,12 +329,34 @@ async function main() {
       const receiverStatus = readReceiverStatuses({ runtimeDir: RUNTIME_DIR });
       report.checks.receiver_root = receiverStatus.root;
       report.checks.receivers = receiverStatus.receivers;
-      if (pairedTargets.some((target) => String(target.identity).startsWith('codex:'))) {
-        if (receiverStatus.receivers.length === 0) {
-          warnings.push('a paired Codex target exists but no local receiver status was found; messages to Codex stay queued until a receiver window is started');
-        } else if (!receiverStatus.receivers.some((receiver) => receiver.active)) {
-          warnings.push('the local Codex receiver is expired, halted or stopped; messages to Codex stay queued until a receiver window is explicitly started');
+      const codexTargets = pairedTargets.filter((target) => String(target.identity).startsWith('codex:'));
+      report.checks.codex_targets = codexTargets.map((target) => {
+        const threadId = String(target.identity).slice('codex:'.length);
+        const receiver = receiverStatus.receivers.find((item) => item.threadId === threadId);
+        return {
+          target: target.identity,
+          enabled: target.enabled === true,
+          receiver_present: receiver !== undefined,
+          mode: receiver?.mode,
+          phase: receiver?.phase,
+          active: receiver?.active === true,
+          expires_at: receiver?.expiresAt ?? null,
+          next_eligible_at: receiver?.nextEligibleAt ?? null,
+          remaining_native_submissions: receiver?.remainingNativeSubmissions ?? null,
+          reason_code: receiver?.reasonCode ?? null,
+        };
+      });
+      for (const target of codexTargets) {
+        const threadId = String(target.identity).slice('codex:'.length);
+        const receiver = receiverStatus.receivers.find((item) => item.threadId === threadId);
+        if (receiver === undefined) {
+          warnings.push(`paired Codex target ${target.identity} has no local receiver status; messages stay queued until a receiver reports status`);
+        } else if (receiver.active !== true) {
+          warnings.push(`receiver for ${target.identity} is ${receiver.phase}${receiver.reasonCode === undefined ? '' : ` (${receiver.reasonCode})`}; messages stay queued until it becomes active`);
         }
+      }
+      if (report.checks.codex_adapter_present === true) {
+        warnings.push('a global codex adapter is connected; current lifecycle uses target-scoped CLI pull, so do not stop or replace the adapter silently');
       }
       if (warnings.length > 0) report.warnings = warnings;
       out(report);

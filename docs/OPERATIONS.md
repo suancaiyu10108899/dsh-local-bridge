@@ -45,10 +45,12 @@ node bin/lab-bridge.mjs check
 node bin/lab-bridge.mjs status --to 'codex:<thread>' --state queued
 ```
 
-- `receiver-status` 只读取 `.local/runtime/codex/*/status.json`，不会启动、续期、停止或修改 receiver。
-- `check` 在存在已配对 Codex 目标但 receiver 不存在/过期/停止时给出 warning。
-- `status` 对排队中的 Codex 消息给出 `delivery_hint`：receiver absent/expired/waiting/ready 等。
-- 本 alpha 不包含 receiver 本体；receiver 的 enable/disable/renew 是下一阶段工作。
+- `receiver-status` 只读取 runtime 下的 `codex/*/status.json`，不会启动、续期、停止或修改 receiver。
+- `check` 会按已配对 Codex 目标逐个显示 receiver 状态；缺失/disabled/expired/halted/PAUSED_UNCERTAIN 会给出 warning。若检测到 legacy 全局 codex adapter，会提示冲突可见，但不会停止或替换它。
+- `status` 对排队中的 Codex 消息给出 `delivery_hint`：absent/expired/waiting/ready/backoff/rate-limited/paused-uncertain/disabled 等。
+- **daily 模式**：`mode=daily`、`enabled=true`、`expires_at=null` 表示持续启用，**null expiry 不是过期**；滚动 `max/used/remaining native submissions` 和 `next_eligible_at` 表示限流（`RATE_LIMITED` 延迟而非终止）；`BACKOFF` 是自动 Hub 重连退避；`PAUSED_UNCERTAIN` 需人工检查，不能盲目重试。
+- legacy bounded 窗口仍兼容：`expires_at` 字符串到期显示 `expired`；两者都只读展示。
+- 本 alpha 不包含 receiver 本体；enable/disable/renew 属于 receiver owner 的后续工作。
 
 ## 配对
 

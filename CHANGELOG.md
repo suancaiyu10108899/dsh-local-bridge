@@ -2,6 +2,21 @@
 
 本文件记录重要变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本遵循 SemVer。
 
+## [0.1.0-alpha.5] - 2026-10-21
+
+### 新增
+
+- 只读 receiver 状态兼容 daily 模式：`mode=daily`、`enabled`、`expires_at=null` 不当过期；滚动提交计数、`next_eligible_at`、heartbeat/pidAlive、reason code。
+- 识别 `BACKOFF`、`RATE_LIMITED`、`PAUSED_UNCERTAIN`、`DISABLED`；`RATE_LIMITED` 显示为延迟，不是终止。
+- `check` 按已配对 Codex 目标逐个报告 receiver 状态；legacy 全局 codex adapter 冲突可见但不停止/替换。
+- `status` 的 delivery_hint 覆盖 daily/限流/退避/暂停等状态。
+- 测试覆盖 daily null expiry、滚动计数、限流/退避/暂停、多 receiver 和 legacy 兼容。
+
+### 说明
+
+- 仅 DSH 侧只读集成；不实现、启动、续期 receiver，不编辑 PCA reserved lane。
+- 无自动 ACK/reply；receiver lifecycle 本体仍由 PCA lane 负责。
+
 ## [0.1.0-alpha.4] - 2026-10-21
 
 ### 新增

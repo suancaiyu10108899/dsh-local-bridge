@@ -4,6 +4,21 @@
 
 All notable changes are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows SemVer.
 
+## [0.1.0-alpha.5] - 2026-10-21
+
+### Added
+
+- Read-only receiver status now tolerates daily mode: `mode=daily`, `enabled`, and `expires_at=null` are not treated as expired; rolling submission counters, `next_eligible_at`, heartbeat/pidAlive, and reason codes are exposed.
+- Recognizes `BACKOFF`, `RATE_LIMITED`, `PAUSED_UNCERTAIN`, and `DISABLED`; `RATE_LIMITED` is described as a delay, not termination.
+- `check` reports receiver status per paired Codex target; a legacy global codex adapter conflict is visible but never stopped or replaced.
+- `status` delivery hints cover daily/rate-limited/backoff/paused states.
+- Tests cover daily null expiry, rolling counters, rate limit/backoff/pause, multiple receivers, and legacy compatibility.
+
+### Notes
+
+- Read-only DSH integration only; no receiver implementation, start, renewal, or PCA reserved-lane edit.
+- No automatic ACK/reply; the receiver lifecycle itself remains PCA-lane work.
+
 ## [0.1.0-alpha.4] - 2026-10-21
 
 ### Added

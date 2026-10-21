@@ -14,7 +14,7 @@
 | 可逆插件安装/卸载 | 支持 | 安全时按字节备份 |
 | DSH bundle 安装（GitHub/本地） | 支持（alpha） | 需要 DSH 0.2.1-rc.2 与 pnpm |
 | managed Hub 子进程 | 支持（默认） | 插件启动/复用/停止自有 Hub；`manageHub:false` 可外部管理 |
-| receiver 状态只读 | 支持 | `receiver-status` / `check` warning / `status` delivery_hint；不启动、不续期 |
+| receiver 状态只读 | 支持 | daily/legacy 模式；`receiver-status` / `check` 按目标 warning / `status` delivery_hint；不启动、不续期、不替换 adapter |
 | receiver enable/disable/renew | 不支持 | 下一阶段生命周期工作 |
 | 多目标 | 不支持 | 每条消息一个目标；无路由 |
 | 跨机 / 云 | 不支持 | 仅 loopback |
