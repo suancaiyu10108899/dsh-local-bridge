@@ -88,7 +88,7 @@ node bin/lab-bridge.mjs consume --msg-id <message-id> --consumer 'dsh:session-<s
 
 ## Install as a DSH bundle (alpha)
 
-The DSH plugin manager can install this bundle from GitHub or a local path. Installation mounts the plugin; **the Hub must still be started separately** (a visible managed companion is future work, not an automatic service in this alpha).
+The DSH plugin manager can install this bundle from GitHub or a local path. After installation the plugin **starts and manages the Hub automatically** (an existing Hub is reused; set `manageHub: false` to manage it yourself). The Hub is still a separate child process, but users no longer need to locate a CLI under node_modules.
 
 > The plugin manager needs `pnpm`. If the CLI reports `pnpm not found`, install pnpm first or use the Desktop Plugins page install entry. Installation performs version/build checks and may ask for confirmation.
 
@@ -101,9 +101,11 @@ dsh plugin --profile web add D:\Dev\dsh-local-bridge-public
 
 # Installed bundles use $DSH_HOME/local-agent-bridge/runtime for mutable state.
 $cli = "$env:USERPROFILE\.dsh\profiles\web\node_modules\.bin\dsh-local-bridge.cmd"
-& $cli init
-& $cli serve
+& $cli init       # first run only; managed Hub startup also creates config/token
+& $cli check      # diagnostics; no manual `serve` when the plugin manages the Hub
 ```
+
+With `manageHub: false`, start the Hub explicitly with `& $cli serve`.
 
 With a local `link:` checkout, runtime stays in the checkout's `.local/runtime`; keep using the source quickstart above.
 

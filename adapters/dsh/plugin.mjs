@@ -12,6 +12,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { HubClient } from '../../src/client.mjs';
+import { createHubService } from '../../src/hub-service.mjs';
 import { RUNTIME_DIR, loadConfig, readToken } from '../../src/runtime.mjs';
 
 export const name = 'local-agent-bridge';
@@ -352,6 +353,19 @@ export async function apply(ctx, config = {}) {
     port: config.hubPort ?? base.port,
   };
 
+  // One visible managed companion: the plugin owns the Hub child unless the
+  // user explicitly manages the Hub themselves. An already-running Hub is
+  // reused and never killed by this plugin.
+  const managedHub = config.manageHub === false ? null : createHubService({ log });
+  if (managedHub !== null) {
+    void managedHub.ensureStarted()
+      .then((result) => log('dsh-plugin/hub-service-ready', result))
+      .catch((error) => log('dsh-plugin/hub-service-failed', {
+        code: error?.code ?? 'hub-service-failed',
+        message: String(error?.message ?? error),
+      }));
+  }
+
   // Native factories are loaded lazily so a missing/renamed package only
   // disables that convenience, not inbound delivery.
   let createUserMessage;
@@ -388,6 +402,11 @@ export async function apply(ctx, config = {}) {
     log,
   });
   ctx.effect(() => disposeHub, 'local-agent-bridge.hub');
+  if (managedHub !== null) {
+    ctx.effect(() => async () => {
+      await managedHub.stop();
+    }, 'local-agent-bridge.hub-service');
+  }
 
   // Tools are registered even when the native package import failed: the
   // fallback definition reproduces the same ctx.tools.register contract.

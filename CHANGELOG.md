@@ -2,6 +2,19 @@
 
 本文件记录重要变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本遵循 SemVer。
 
+## [0.1.0-alpha.4] - 2026-10-21
+
+### 新增
+
+- 插件默认自动启动并管理 Hub 子进程；已有 Hub 会复用，插件释放时只停止自己启动的 Hub。
+- `manageHub: false` 可关闭自动管理，改为外部/手动启动。
+- 新增 managed-hub 单元测试（启动、复用、停止、状态文件清理）。
+
+### 说明
+
+- Hub 仍是独立进程，但安装 bundle 后不再要求用户手动定位 node_modules CLI。
+- receiver 的 enable/disable/renew、Codex plugin 仍不在本 alpha。
+
 ## [0.1.0-alpha.3] - 2026-10-21
 
 ### 新增
