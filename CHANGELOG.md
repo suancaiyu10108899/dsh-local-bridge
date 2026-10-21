@@ -2,6 +2,19 @@
 
 本文件记录重要变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本遵循 SemVer。
 
+## [0.1.0-alpha.2] - 2026-10-21
+
+### 变更
+
+- 中文成为 canonical 文档；英文作为翻译，并在文件顶部标注可能滞后。
+- README 与 docs 增加语言切换/翻译链接。
+- `CONTRIBUTING`、`SECURITY`、`CHANGELOG` 增加中文主版与英文翻译。
+- 修复英文 README 语言切换标题的换行格式。
+
+### 说明
+
+- 本版本无行为/协议/代码变更，只是文档与版本元数据；CI 仍覆盖 Windows + Node 22/24。
+- Codex native queue receiver、MCP App、host-management 模块仍不在公开支持面。
 ## [0.1.0-alpha.1] - 2026-10-21
 
 ### 新增

@@ -4,6 +4,19 @@
 
 All notable changes are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows SemVer.
 
+## [0.1.0-alpha.2] - 2026-10-21
+
+### Changed
+
+- Chinese is now the canonical documentation language; English is a marked translation that may lag.
+- README and docs gained language switching/translation links.
+- `CONTRIBUTING`, `SECURITY`, and `CHANGELOG` gained Chinese canonical versions plus English translations.
+- Fixed the English README language-switch header newline.
+
+### Notes
+
+- No behavior/protocol/code changes in this release; documentation and version metadata only. CI still runs Windows + Node 22/24.
+- Codex native queue receiver, MCP App, and host-management modules remain outside the public support surface.
 ## [0.1.0-alpha.1] - 2026-10-21
 
 ### Added
