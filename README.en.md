@@ -1,4 +1,6 @@
-[简体中文](README.md) | English`r`n`r`n> English translation. The canonical documentation is [简体中文](README.md). This translation may lag behind the Chinese canonical version.
+[简体中文](README.md) | English
+
+> English translation. The canonical documentation is [简体中文](README.md). This translation may lag behind the Chinese canonical version.
 
 # DSH Local Bridge
 
