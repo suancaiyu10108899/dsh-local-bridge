@@ -21,15 +21,17 @@ dsh plugin --profile web add github:suancaiyu10108899/dsh-local-bridge
 dsh plugin --profile web add D:\Dev\dsh-local-bridge-public
 ```
 
-- bundle 安装只注册插件；本 alpha **不自动启动 Hub**。
-- 插件管理器需要 `pnpm`；CLI 报 `pnpm not found` 时先安装 pnpm，或改用 Desktop 插件页安装。
+- bundle 安装后插件默认**自动启动并管理 Hub**；已有 Hub 会复用，不会被插件停止。
+- 设置 `manageHub: false` 可关闭自动管理，改为自行启动 Hub。
+- 插件释放时会停止它自己启动的 Hub；已有/外部 Hub 不受影响。
 - 已安装 bundle 的运行态在 `$DSH_HOME/local-agent-bridge/runtime`（不是 node_modules 内）。
-- 用安装后的 CLI 初始化并启动 Hub：
+- 手动管理/诊断时可用安装后的 CLI：
 
 ```powershell
 $cli = "$env:USERPROFILE\.dsh\profiles\web\node_modules\.bin\dsh-local-bridge.cmd"
 & $cli init
-& $cli serve
+& $cli serve   # 仅在 manageHub:false 或外部管理时需要
+& $cli check
 ```
 
 - 从源码/`link:` 安装时，运行态仍在 checkout 的 `.local/runtime`。

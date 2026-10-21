@@ -4,6 +4,19 @@
 
 All notable changes are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows SemVer.
 
+## [0.1.0-alpha.4] - 2026-10-21
+
+### Added
+
+- The plugin now starts and manages a Hub child process by default; an existing Hub is reused and only a plugin-owned Hub is stopped on dispose.
+- `manageHub: false` disables automatic management for external/manual operation.
+- Added managed-hub unit tests (start, reuse, stop, state-file cleanup).
+
+### Notes
+
+- The Hub is still a separate process, but an installed bundle no longer requires the user to locate a node_modules CLI.
+- Receiver enable/disable/renew and the Codex plugin remain outside this alpha.
+
 ## [0.1.0-alpha.3] - 2026-10-21
 
 ### Added
