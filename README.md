@@ -88,6 +88,8 @@ node bin/lab-bridge.mjs consume --msg-id <message-id> --consumer 'dsh:session-<s
 
 DSH 的插件管理器可以从 GitHub 或本地路径安装 bundle。安装会让 DSH 加载本插件；**Hub 仍需单独启动**（一个可见、可管理的 companion 是后续工作，当前不是自动服务）。
 
+> 插件管理器需要 `pnpm`；如果 CLI 报 `pnpm not found`，请先安装 pnpm，或使用 Desktop 插件页的安装入口。安装会做版本/构建检查，可能要求确认。
+
 ```powershell
 # GitHub（需要 DSH 0.2.1-rc.2；bundle 声明了 engines.dsh）
 dsh plugin --profile web add github:suancaiyu10108899/dsh-local-bridge

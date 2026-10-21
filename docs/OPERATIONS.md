@@ -22,6 +22,7 @@ dsh plugin --profile web add D:\Dev\dsh-local-bridge-public
 ```
 
 - bundle 安装只注册插件；本 alpha **不自动启动 Hub**。
+- 插件管理器需要 `pnpm`；CLI 报 `pnpm not found` 时先安装 pnpm，或改用 Desktop 插件页安装。
 - 已安装 bundle 的运行态在 `$DSH_HOME/local-agent-bridge/runtime`（不是 node_modules 内）。
 - 用安装后的 CLI 初始化并启动 Hub：
 
