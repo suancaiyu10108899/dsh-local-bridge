@@ -4,6 +4,20 @@
 
 All notable changes are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows SemVer.
 
+## [0.1.0-alpha.6] - 2026-10-21
+
+### Added
+
+- Bounded-backoff auto-restart of the managed Hub child after an unexpected exit (1s→2s→5s→10s→30s, up to 10 attempts); only the plugin-owned Hub is restarted, external Hubs are reused and never stopped.
+- Read-only `service-status` CLI and `bridge_service_status` DSH tool: Hub health, connection state, managed-Hub restart count/next retry/last exit, receiver status.
+- Companion health/recovery documentation.
+
+### Notes
+
+- Lifecycle resilience and read-only visibility only; message protocol, pairing, and receiver behavior are unchanged.
+- After the retry cap the status exposes `auto_restart_halted` instead of retrying forever.
+- Codex is still not publicly exported.
+
 ## [0.1.0-alpha.5] - 2026-10-21
 
 ### Added

@@ -74,6 +74,7 @@ node bin/lab-bridge.mjs dsh-plugin-status
 ```text
 bridge_send to='dsh:session-<session-id>' text='hello'
 bridge_status msg_id='<message-id>'
+bridge_service_status
 ```
 
 CLI 操作：
@@ -82,11 +83,12 @@ CLI 操作：
 node bin/lab-bridge.mjs send --to 'dsh:session-<session-id>' --text 'hello through the bridge'
 node bin/lab-bridge.mjs status --msg-id <message-id>
 node bin/lab-bridge.mjs consume --msg-id <message-id> --consumer 'dsh:session-<session-id>' --note 'handled'
+node bin/lab-bridge.mjs service-status
 ```
 
 ## 作为 DSH bundle 安装（alpha）
 
-DSH 的插件管理器可以从 GitHub 或本地路径安装 bundle。安装后插件会**自动启动并管理 Hub**（已有 Hub 会复用；设置 `manageHub: false` 可自行管理）。Hub 仍是独立子进程，但用户不需要手动定位 node_modules 里的 CLI。
+DSH 的插件管理器可以从 GitHub 或本地路径安装 bundle。安装后插件会**自动启动并管理 Hub**（已有 Hub 会复用；设置 `manageHub: false` 可自行管理）。Hub 仍是独立子进程，但用户不需要手动定位 node_modules 里的 CLI。Hub 子进程异常退出时，companion 会按有界退避自动重启它；已有/外部 Hub 只复用，不停止。
 
 > 插件管理器需要 `pnpm`；如果 CLI 报 `pnpm not found`，请先安装 pnpm，或使用 Desktop 插件页的安装入口。安装会做版本/构建检查，可能要求确认。
 
@@ -100,7 +102,9 @@ dsh plugin --profile web add D:\Dev\dsh-local-bridge-public
 # 安装后的 bundle 使用 $DSH_HOME/local-agent-bridge/runtime 作为运行态目录
 $cli = "$env:USERPROFILE\.dsh\profiles\web\node_modules\.bin\dsh-local-bridge.cmd"
 & $cli init       # 仅首次；插件启动 Hub 时也会创建配置/令牌
+& $cli pair add 'dsh:session-<session-id>' --label 'DSH session'
 & $cli check      # 诊断用；Hub 已由插件管理时无需手动 serve
+& $cli service-status
 ```
 
 如果关闭自动管理（`manageHub: false`），再用 `& $cli serve` 显式启动 Hub。

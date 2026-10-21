@@ -76,6 +76,7 @@ From a paired DSH conversation:
 ```text
 bridge_send to='dsh:session-<session-id>' text='hello'
 bridge_status msg_id='<message-id>'
+bridge_service_status
 ```
 
 CLI operations:
@@ -84,11 +85,12 @@ CLI operations:
 node bin/lab-bridge.mjs send --to 'dsh:session-<session-id>' --text 'hello through the bridge'
 node bin/lab-bridge.mjs status --msg-id <message-id>
 node bin/lab-bridge.mjs consume --msg-id <message-id> --consumer 'dsh:session-<session-id>' --note 'handled'
+node bin/lab-bridge.mjs service-status
 ```
 
 ## Install as a DSH bundle (alpha)
 
-The DSH plugin manager can install this bundle from GitHub or a local path. After installation the plugin **starts and manages the Hub automatically** (an existing Hub is reused; set `manageHub: false` to manage it yourself). The Hub is still a separate child process, but users no longer need to locate a CLI under node_modules.
+The DSH plugin manager can install this bundle from GitHub or a local path. After installation the plugin **starts and manages the Hub automatically** (an existing Hub is reused; set `manageHub: false` to manage it yourself). The Hub is still a separate child process, but users no longer need to locate a CLI under node_modules. If the child exits unexpectedly, the companion restarts it with bounded backoff; an existing/external Hub is reused and never stopped.
 
 > The plugin manager needs `pnpm`. If the CLI reports `pnpm not found`, install pnpm first or use the Desktop Plugins page install entry. Installation performs version/build checks and may ask for confirmation.
 
@@ -102,7 +104,9 @@ dsh plugin --profile web add D:\Dev\dsh-local-bridge-public
 # Installed bundles use $DSH_HOME/local-agent-bridge/runtime for mutable state.
 $cli = "$env:USERPROFILE\.dsh\profiles\web\node_modules\.bin\dsh-local-bridge.cmd"
 & $cli init       # first run only; managed Hub startup also creates config/token
+& $cli pair add 'dsh:session-<session-id>' --label 'DSH session'
 & $cli check      # diagnostics; no manual `serve` when the plugin manages the Hub
+& $cli service-status
 ```
 
 With `manageHub: false`, start the Hub explicitly with `& $cli serve`.

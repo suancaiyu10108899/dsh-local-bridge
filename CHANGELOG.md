@@ -2,6 +2,20 @@
 
 本文件记录重要变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本遵循 SemVer。
 
+## [0.1.0-alpha.6] - 2026-10-21
+
+### 新增
+
+- Managed Hub 子进程异常退出后的有界退避自动重启（1s→2s→5s→10s→30s，最多 10 次），只重启自己启动的 Hub；外部 Hub 仍只复用、不停止。
+- `service-status` CLI 与 DSH 工具 `bridge_service_status`（只读）：Hub 健康、连接状态、managed Hub 重启计数/下次重试/上次退出、receiver 状态。
+- 文档补充 companion 健康与恢复。
+
+### 说明
+
+- 仅新增生命周期韧性/只读可见性，不改变消息协议、配对或 receiver 行为。
+- 达到重试上限后显示 `auto_restart_halted`，不无限重启。
+- Codex 仍未公开导出。
+
 ## [0.1.0-alpha.5] - 2026-10-21
 
 ### 新增

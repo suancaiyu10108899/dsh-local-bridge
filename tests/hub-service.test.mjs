@@ -24,6 +24,8 @@ function freePort() {
   });
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 test('managed hub starts on demand, is reused by a second service, and stops only its own child', async () => {
   const runtimeDir = tempRuntime();
   const port = await freePort();
@@ -56,6 +58,48 @@ test('managed hub starts on demand, is reused by a second service, and stops onl
     assert.equal(serverInfoHealth({ serverInfoFile: path.join(runtimeDir, 'hub', 'server.json') }).present, false);
   } finally {
     await second?.stop();
+    await service.stop();
+    fs.rmSync(runtimeDir, { recursive: true, force: true });
+  }
+});
+
+test('managed hub restarts its own child after an unexpected exit', async () => {
+  const runtimeDir = tempRuntime();
+  const port = await freePort();
+  fs.writeFileSync(path.join(runtimeDir, 'hub', 'config.json'), JSON.stringify({ v: 1, host: '127.0.0.1', port }), 'utf8');
+  fs.writeFileSync(path.join(runtimeDir, 'hub', 'token'), `${'b'.repeat(64)}\n`, 'utf8');
+  const projectRoot = path.resolve(import.meta.dirname, '..');
+  const service = createHubService({
+    runtimeDir,
+    projectRoot,
+    restartDelaysMs: [100, 200],
+    maxRestartAttempts: 4,
+  });
+  try {
+    const first = await service.ensureStarted({ timeoutMs: 10_000 });
+    assert.equal(first.ok, true);
+    const firstPid = first.pid;
+    try {
+      process.kill(firstPid, 'SIGTERM');
+    } catch {
+      /* the child may already be exiting */
+    }
+
+    let restarted;
+    const deadline = Date.now() + 15_000;
+    while (Date.now() < deadline) {
+      const current = service.status();
+      if (current.pidAlive === true && current.pid !== firstPid && current.owned === true && current.restart_count >= 1) {
+        restarted = current;
+        break;
+      }
+      await sleep(100);
+    }
+    assert.ok(restarted, 'managed hub did not come back after child exit');
+    assert.notEqual(restarted.pid, firstPid);
+    assert.ok(service.status().restart_count >= 1);
+    assert.equal(service.status().last_exit.pid, firstPid);
+  } finally {
     await service.stop();
     fs.rmSync(runtimeDir, { recursive: true, force: true });
   }

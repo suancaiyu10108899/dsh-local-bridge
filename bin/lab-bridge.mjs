@@ -16,6 +16,8 @@
 //   node bin/lab-bridge.mjs module-watch-status [--profile PATH]
 //   node bin/lab-bridge.mjs enable-module-watch [--profile PATH]
 //   node bin/lab-bridge.mjs disable-module-watch [--profile PATH]
+//   node bin/lab-bridge.mjs receiver-status
+//   node bin/lab-bridge.mjs service-status
 //   node bin/lab-bridge.mjs check
 import fs from 'node:fs';
 import path from 'node:path';
@@ -32,6 +34,7 @@ import {
   readToken,
 } from '../src/runtime.mjs';
 import { attachDeliveryHints, readReceiverStatuses } from '../src/receiver-status.mjs';
+import { collectServiceStatus } from '../src/service-status.mjs';
 import { withHubClient } from '../src/client.mjs';
 import { identityRole, isValidIdentity, newMessageId } from '../src/protocol.mjs';
 import {
@@ -283,6 +286,10 @@ async function main() {
       out({ ok: true, ...status });
       return;
     }
+    case 'service-status': {
+      out({ ok: true, ...collectServiceStatus({ runtimeDir: RUNTIME_DIR }) });
+      return;
+    }
     case 'check': {
       const report = { ok: false, checks: {} };
       let pairedTargets = [];
@@ -385,6 +392,7 @@ async function main() {
           'enable-module-watch [--profile PATH]',
           'disable-module-watch [--profile PATH]',
           'receiver-status',
+          'service-status',
           'check',
         ],
       });
