@@ -86,6 +86,25 @@ node bin/lab-bridge.mjs status --msg-id <message-id>
 node bin/lab-bridge.mjs consume --msg-id <message-id> --consumer 'dsh:session-<session-id>' --note 'handled'
 ```
 
+## Install as a DSH bundle (alpha)
+
+The DSH plugin manager can install this bundle from GitHub or a local path. Installation mounts the plugin; **the Hub must still be started separately** (a visible managed companion is future work, not an automatic service in this alpha).
+
+```powershell
+# GitHub (requires DSH 0.2.1-rc.2; the bundle declares engines.dsh)
+dsh plugin --profile web add github:suancaiyu10108899/dsh-local-bridge
+
+# or a local checkout
+dsh plugin --profile web add D:\Dev\dsh-local-bridge-public
+
+# Installed bundles use $DSH_HOME/local-agent-bridge/runtime for mutable state.
+$cli = "$env:USERPROFILE\.dsh\profiles\web\node_modules\.bin\dsh-local-bridge.cmd"
+& $cli init
+& $cli serve
+```
+
+With a local `link:` checkout, runtime stays in the checkout's `.local/runtime`; keep using the source quickstart above.
+
 ## Uninstall
 
 ```powershell

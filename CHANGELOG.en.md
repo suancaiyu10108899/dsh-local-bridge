@@ -4,6 +4,20 @@
 
 All notable changes are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning follows SemVer.
 
+## [0.1.0-alpha.3] - 2026-10-21
+
+### Added
+
+- DSH bundle manifest: `dsh.bundle.patch`, root plugin entry, `engines.dsh`; install via `dsh plugin --profile ... add github:<owner>/<repo>`.
+- Installed bundles use `$DSH_HOME/local-agent-bridge/runtime`; source checkouts keep `.local/runtime`.
+- Read-only `receiver-status`, plus receiver lifecycle warnings in `check` and `delivery_hint` in `status`.
+- Documentation for bundle installation, runtime locations, and receiver status.
+
+### Notes
+
+- This alpha does not auto-start the Hub/receiver and does not implement enable/disable/renew. The PCA reserved lane is untouched.
+- Codex native queue receiver, MCP App, and host-management remain outside the public support surface.
+
 ## [0.1.0-alpha.2] - 2026-10-21
 
 ### Changed
