@@ -113,11 +113,21 @@ $cli = "$env:USERPROFILE\.dsh\profiles\web\node_modules\.bin\dsh-local-bridge.cm
 
 ## 卸载
 
+源码安装：
+
 ```powershell
 node bin/lab-bridge.mjs uninstall-dsh-plugin
 ```
 
-安装器会保留字节级备份，只移除本项目自己的 profile 行；如果 profile 被外部修改，会拒绝覆盖冲突并提示人工检查。
+DSH bundle 安装：
+
+```powershell
+dsh plugin --profile web remove dsh-local-bridge
+# 确认没有其他 profile 使用后再清理运行态（会删除令牌、队列和日志）：
+Remove-Item -Recurse -Force "$env:USERPROFILE\.dsh\local-agent-bridge"
+```
+
+安装器会保留字节级备份，只移除本项目自己的 profile 行；如果 profile 被外部修改，会拒绝覆盖冲突并提示人工检查。卸载/清理前请确认没有其他对话仍在使用该 Hub。
 
 ## 安全模型
 
@@ -141,6 +151,7 @@ node bin/lab-bridge.mjs uninstall-dsh-plugin
 
 ## 文档
 
+- [产品形态](docs/PRODUCT.md)
 - [架构](docs/ARCHITECTURE.md)
 - [运维](docs/OPERATIONS.md)
 - [能力矩阵](docs/CAPABILITY-MATRIX.md)

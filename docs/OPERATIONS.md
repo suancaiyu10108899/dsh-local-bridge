@@ -116,7 +116,8 @@ node bin/lab-bridge.mjs uninstall-dsh-plugin
 ```
 
 - 安装前备份 profile，随后添加本项目行。
-- 卸载时，若文件未被外部修改则按字节恢复；否则只移除本项目行并报告冲突。
+- 源码安装卸载：`node bin/lab-bridge.mjs uninstall-dsh-plugin`；若文件未被外部修改则按字节恢复，否则只移除本项目行并报告冲突。
+- DSH bundle 卸载：`dsh plugin --profile <profile> remove dsh-local-bridge`；随后确认无其他 profile 使用，再手动清理 `$DSH_HOME/local-agent-bridge`（令牌/队列/日志会丢失）。
 - 已存在不同的 `hmr` 行会报 `watch-row-conflict`；请人工检查，不要强推。
 
 ## Hub 生命周期
