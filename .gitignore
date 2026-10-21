@@ -1,0 +1,17 @@
+.local/
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+build/
+coverage/
+.venv/
+__pycache__/
+*.pyc
+*.log
+*.sqlite*
+*.db
+*.zip
+*.zstd
+*.jsonl

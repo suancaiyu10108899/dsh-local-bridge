@@ -1,0 +1,34 @@
+{
+  "name": "dsh-local-bridge",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Durable same-machine messaging between DeepSeek Harness (DSH) conversations: local hub, DSH host plugin, CLI.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "test": "node --test",
+    "hub": "node hub/main.mjs",
+    "cli": "node bin/lab-bridge.mjs",
+    "check": "node bin/lab-bridge.mjs check"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/suancaiyu10108899/dsh-local-bridge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/suancaiyu10108899/dsh-local-bridge/issues"
+  },
+  "homepage": "https://github.com/suancaiyu10108899/dsh-local-bridge#readme",
+  "files": [
+    "bin",
+    "hub",
+    "src",
+    "adapters",
+    "docs",
+    "README.md",
+    "LICENSE"
+  ]
+}
