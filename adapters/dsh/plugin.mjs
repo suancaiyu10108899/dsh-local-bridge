@@ -13,7 +13,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { HubClient } from '../../src/client.mjs';
 import { RUNTIME_DIR, loadConfig, readToken } from '../../src/runtime.mjs';
-import { isManagementEnabled, registerManagementTools, runManagementSelftest } from './management.mjs';
 
 export const name = 'local-agent-bridge';
 export const inject = ['agents', 'tools'];
@@ -399,24 +398,4 @@ export async function apply(ctx, config = {}) {
   } catch (error) {
     log('dsh-plugin/tool-registration-failed', { message: String(error?.message ?? error) });
   }
-
-  // T5 host management is opt-in: a local flag file enables the extra tools and
-  // optionally runs a one-shot self-test. Default plugin surface is unchanged.
-  if (isManagementEnabled()) {
-    try {
-      const tools = registerManagementTools({ ctx, defineTool });
-      log('dsh-plugin/management-tools-registered', { tools });
-      void runManagementSelftest({ ctx, log }).catch((error) => {
-        log('dsh-plugin/management-selftest-failed', { message: String(error?.message ?? error) });
-      });
-    } catch (error) {
-      log('dsh-plugin/management-registration-failed', { message: String(error?.message ?? error) });
-    }
-  }
 }
-
-
-
-
-
-

@@ -18,7 +18,7 @@
 | Unattended service / autostart | Not supported | Manual start |
 | Codex native queue receiver | Experimental, excluded | Build-specific; separate lane |
 | MCP App integration | Not supported | Separate experiment |
-| Host-management tools | Experimental, off by default | Unsupported in alpha |
+| Host-management tools | Not included in this alpha | Excluded to keep the supported surface small |
 | Independent cold-machine validation | Not done | Please report your environment |
 
 ## Delivery semantics

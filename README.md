@@ -105,7 +105,7 @@ The installer keeps byte-level backups and only removes its own profile rows. If
 - CLI only; no GUI.
 - DSH profile mutation is version-sensitive; keep the generated backups.
 - Codex native queue receiver is excluded from this alpha.
-- Optional host-management code in the repository is experimental, disabled by default, and out of scope.
+- Experimental Codex native queue receiver, MCP App, and host-management modules are excluded from this alpha.
 - No independent cold-machine validation yet.
 - API and state formats may change between 0.x releases.
 - Support is best-effort; there is no SLA.
