@@ -3,3 +3,5 @@
 *.json text eol=lf
 *.sh text eol=lf
 .githooks/* text eol=lf
+# Preserve exact approved Codex export bytes (manifest SHA-256).
+codex-receiver/** -text

@@ -26,4 +26,17 @@ jobs:
       - name: Show version
         run: node --version
       - name: Run tests
-        run: node --test
+        run: node --test tests/*.test.mjs
+  codex-receiver:
+    name: codex-receiver-node-24.15
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
+      - name: Show version
+        run: node --version
+      - name: Run optional Codex receiver tests
+        run: node --test codex-receiver/tests/*.test.mjs

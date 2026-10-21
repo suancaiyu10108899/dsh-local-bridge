@@ -37,11 +37,11 @@
    - `bridge_targets`：列出已配对目标。
    - `bridge_service_status`：只读查看 Hub、连接、managed Hub 重启状态和 receiver 状态。
 
-5. **可选 Codex 支持面（后续，需独立批准）**
-   - 以独立包/市场条目的形式提供，用户显式安装。
+5. **可选 Codex 支持面（实验性，已获精确导出批准）**
+   - 公开仓的 `codex-receiver/` 是独立 optional CLI source package，MIT，source `c1da001`；不进入 DSH bundle、不自动启动/登录/扩目标。
    - target-scoped receiver：每个 Codex 目标只拉取自己的消息，不注册/替换全局 Codex adapter。
    - daily 模式：无固定期限、滚动提交限额、显式 disable/renew；状态可见。
-   - **当前未获 public export 批准，不属于本公开 alpha 的支持面。**
+   - 没有 npm 发布、官方 Codex marketplace/plugin 挂载；第三方冷安装/重启恢复/soak/升级矩阵仍 NOT_RUN。
 
 6. **文档**
    - 安装、配对、升级、回滚、卸载、故障排查。
@@ -76,7 +76,7 @@
 | 配对/发送/唤醒 | CLI + DSH tools | 更少手写路径的设置/引导 |
 | 服务状态 | `service-status` / `bridge_service_status` 只读 | CLI + 可选 GUI/托盘 |
 | DSH↔DSH | 支持，单机 | 稳定支持面 |
-| DSH↔Codex | 实验性、PCA lane、未公开导出 | 经批准的可选 Codex 包 |
+| DSH↔Codex | 可选 `codex-receiver/` 实验源包（MIT、精确导出；不随 DSH bundle 安装/启动） | 经批准的独立可选包；无 marketplace/默认进程 |
 | GUI/托盘 | 无 | 可选，非第一优先 |
 | 跨机/云/多用户 | 不支持 | 仍不支持 |
 
@@ -84,7 +84,7 @@
 
 1. **DSH-only 可用产品（当前）**：bundle、managed Hub、状态工具、安装/卸载文档。
 2. **首次使用体验**：配对/自检/故障排查更顺；减少对 `node_modules/.bin` 路径的依赖；评估设置界面/托盘。
-3. **Codex 公开导出（阻塞中）**：需要 PCA 明确允许的代码范围、许可/支持声明、打包格式、基线 commit 和测试门槛；获批前不复制/发布 reserved 代码。
+3. **Codex 公开导出（已完成精确导出，待 tag）**：7 模块 + 2 脱敏 tests + 说明已按批准 allowlist 进入 `codex-receiver/`；不覆盖 public core；保持 experimental/NOT_RUN 限制，不做 npm/marketplace。
 4. **稳定版**：固定支持矩阵、升级/回滚、干净安装验证、第三方试用反馈。
 
 ## 不承诺

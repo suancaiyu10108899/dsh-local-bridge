@@ -1,0 +1,13 @@
+{
+  "name": "local-agent-bridge-codex-receiver",
+  "version": "0.1.0-alpha.1",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24.15.0"
+  },
+  "scripts": {
+    "test": "node --test tests/codex-wake-daily.test.mjs tests/codex-wake-queue-receiver.test.mjs"
+  }
+}
