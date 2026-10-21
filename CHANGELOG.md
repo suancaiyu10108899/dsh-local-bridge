@@ -2,6 +2,20 @@
 
 本文件记录重要变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本遵循 SemVer。
 
+## [0.1.0-alpha.3] - 2026-10-21
+
+### 新增
+
+- DSH bundle manifest：`dsh.bundle.patch`、根插件入口、`engines.dsh`，支持 `dsh plugin --profile ... add github:<owner>/<repo>`。
+- 已安装 bundle 使用 `$DSH_HOME/local-agent-bridge/runtime` 作为运行态目录；源码 checkout 继续使用 `.local/runtime`。
+- 只读的 `receiver-status` 命令，以及 `check` / `status` 中的 receiver 生命周期 warning / `delivery_hint`。
+- bundle 安装、运行时目录与 receiver 状态的文档。
+
+### 说明
+
+- 本 alpha 不会自动启动 Hub/receiver；没有 enable/disable/renew；不改变 PCA reserved lane。
+- Codex native queue receiver、MCP App、host-management 仍不在公开支持面。
+
 ## [0.1.0-alpha.2] - 2026-10-21
 
 ### 变更

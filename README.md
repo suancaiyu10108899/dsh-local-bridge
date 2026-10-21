@@ -84,6 +84,25 @@ node bin/lab-bridge.mjs status --msg-id <message-id>
 node bin/lab-bridge.mjs consume --msg-id <message-id> --consumer 'dsh:session-<session-id>' --note 'handled'
 ```
 
+## 作为 DSH bundle 安装（alpha）
+
+DSH 的插件管理器可以从 GitHub 或本地路径安装 bundle。安装会让 DSH 加载本插件；**Hub 仍需单独启动**（一个可见、可管理的 companion 是后续工作，当前不是自动服务）。
+
+```powershell
+# GitHub（需要 DSH 0.2.1-rc.2；bundle 声明了 engines.dsh）
+dsh plugin --profile web add github:suancaiyu10108899/dsh-local-bridge
+
+# 或本地 checkout
+dsh plugin --profile web add D:\Dev\dsh-local-bridge-public
+
+# 安装后的 bundle 使用 $DSH_HOME/local-agent-bridge/runtime 作为运行态目录
+$cli = "$env:USERPROFILE\.dsh\profiles\web\node_modules\.bin\dsh-local-bridge.cmd"
+& $cli init
+& $cli serve
+```
+
+如果本地 checkout 用 `link:` 安装，运行态仍跟随 checkout 的 `.local/runtime`；从源码运行时继续使用上面的快速开始即可。
+
 ## 卸载
 
 ```powershell

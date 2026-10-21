@@ -1,20 +1,35 @@
 // Runtime locations and hub configuration for the Local Agent Bridge.
-// Everything mutable lives under <project>/.local/runtime (gitignored).
+// Everything mutable lives under <project>/.local/runtime for source checkouts,
+// or under $DSH_HOME/local-agent-bridge/runtime when installed as a DSH bundle.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 export const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-function resolveRuntimeDir() {
-  const override = process.env.LAB_BRIDGE_RUNTIME_DIR;
-  return override !== undefined && override.length > 0
-    ? path.resolve(override)
-    : path.join(PROJECT_ROOT, '.local', 'runtime');
+/**
+ * Resolve the mutable runtime directory.
+ *
+ * - Explicit `LAB_BRIDGE_RUNTIME_DIR` wins.
+ * - A source checkout keeps runtime inside the project's `.local/runtime`.
+ * - An installed DSH bundle lives under a profile's node_modules; using its
+ *   package directory would put state inside node_modules and lose it on an
+ *   upgrade, so installed packages use $DSH_HOME/local-agent-bridge/runtime.
+ */
+export function runtimeDirFor({ projectRoot = PROJECT_ROOT, env = process.env, homedir = os.homedir() } = {}) {
+  const override = env.LAB_BRIDGE_RUNTIME_DIR;
+  if (override !== undefined && override.length > 0) return path.resolve(override);
+  const installed = projectRoot.split(path.sep).includes('node_modules');
+  if (!installed) return path.join(projectRoot, '.local', 'runtime');
+  const dshHome = env.DSH_HOME !== undefined && env.DSH_HOME.length > 0
+    ? path.resolve(env.DSH_HOME)
+    : path.join(homedir, '.dsh');
+  return path.join(dshHome, 'local-agent-bridge', 'runtime');
 }
 
-export const RUNTIME_DIR = resolveRuntimeDir();
+export const RUNTIME_DIR = runtimeDirFor();
 export const HUB_DIR = path.join(RUNTIME_DIR, 'hub');
 export const STATE_FILE = path.join(HUB_DIR, 'state.json');
 export const EVENTS_FILE = path.join(HUB_DIR, 'events.jsonl');
