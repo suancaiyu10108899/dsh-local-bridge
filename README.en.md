@@ -90,6 +90,8 @@ node bin/lab-bridge.mjs consume --msg-id <message-id> --consumer 'dsh:session-<s
 
 The DSH plugin manager can install this bundle from GitHub or a local path. Installation mounts the plugin; **the Hub must still be started separately** (a visible managed companion is future work, not an automatic service in this alpha).
 
+> The plugin manager needs `pnpm`. If the CLI reports `pnpm not found`, install pnpm first or use the Desktop Plugins page install entry. Installation performs version/build checks and may ask for confirmation.
+
 ```powershell
 # GitHub (requires DSH 0.2.1-rc.2; the bundle declares engines.dsh)
 dsh plugin --profile web add github:suancaiyu10108899/dsh-local-bridge
