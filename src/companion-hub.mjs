@@ -157,6 +157,7 @@ export function createCompanionHub({
   let childGeneration = 0;
   let lease = null;
   let stopping = false;
+  let stopPromise = null;
   let startPromise = null;
   let heartbeatTimer = null;
   let restartTimer = null;
@@ -805,21 +806,27 @@ export function createCompanionHub({
     return { confirmed: true, stopped: true };
   }
 
-  async function stop() {
-    if (stopping) return status();
-    stopping = true;
-    if (heartbeatTimer !== null) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
-    if (restartTimer !== null) { clearTimeout(restartTimer); restartTimer = null; }
-    if (stableTimer !== null) { clearTimeout(stableTimer); stableTimer = null; }
-    const stopped = await stopOwnChild();
-    if (stopped.confirmed && lease !== null) {
-      releaseHubOwner({ runtimeDir: runtimeRoot, nonce: lease.lock.nonce });
-      lease = null;
-      writeHubState('STOPPED', { reason_code: 'STOPPED' });
-    } else if (!stopped.confirmed) {
-      writeHubState('STOPPED', { reason_code: lastError ?? 'STOP_UNCONFIRMED' });
-    }
-    return status();
+  function stop() {
+    // Every caller must await the same in-flight stop. Returning status() here
+    // would let companion/main exit while the first stop is still waiting for
+    // fresh identity or for the adopted Hub to die.
+    if (stopPromise !== null) return stopPromise;
+    stopPromise = (async () => {
+      stopping = true;
+      if (heartbeatTimer !== null) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+      if (restartTimer !== null) { clearTimeout(restartTimer); restartTimer = null; }
+      if (stableTimer !== null) { clearTimeout(stableTimer); stableTimer = null; }
+      const stopped = await stopOwnChild();
+      if (stopped.confirmed && lease !== null) {
+        releaseHubOwner({ runtimeDir: runtimeRoot, nonce: lease.lock.nonce });
+        lease = null;
+        writeHubState('STOPPED', { reason_code: 'STOPPED' });
+      } else if (!stopped.confirmed) {
+        writeHubState('STOPPED', { reason_code: lastError ?? 'STOP_UNCONFIRMED' });
+      }
+      return status();
+    })();
+    return stopPromise;
   }
 
   async function runStart() {

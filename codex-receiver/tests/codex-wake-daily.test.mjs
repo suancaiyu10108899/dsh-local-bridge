@@ -46,7 +46,7 @@ const idle = (now = Date.now()) => [{ type: 'task_complete', timestamp: new Date
 const message = (to, id = 'm-daily-1') => ({ v: 1, msg_id: id, from: sender, to: `codex:${to}`, kind: 'text',
   text: 'ordinary daily peer message', created_at: new Date().toISOString(), expires_at: new Date(Date.now() + 86400000).toISOString() });
 async function hubFixture(t, dir) {
-  const token = 'daily-isolated-token'.padEnd(64, 'x');
+  const token = crypto.randomBytes(32).toString('hex');
   const paths = { stateFile: path.join(dir, 'hub-state.json'), eventsFile: path.join(dir, 'hub-events.jsonl') };
   const store = new HubStore(paths).load(), hub = new BridgeHub({ store, token, port: 0 });
   const addr = await hub.start();const options = { host: '127.0.0.1', port: addr.port, token };

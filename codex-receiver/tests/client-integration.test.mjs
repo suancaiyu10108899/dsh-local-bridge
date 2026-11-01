@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { HubClient as ReceiverHubClient } from '../src/client.mjs';
@@ -28,7 +29,7 @@ const clientIdentity = 'client:dot-22222222-2222-4222-8222-222222222222';
 const turn = '44444444-4444-4444-8444-444444444444';
 async function fixture(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lab-client-integration-'));
-  const root = path.join(dir, 'runtime'), token = 'synthetic-isolated-base-token-'.repeat(3);
+  const root = path.join(dir, 'runtime'), token = crypto.randomBytes(32).toString('hex');
   const store = new HubStore({ stateFile: path.join(root, 'hub/state.json'), eventsFile: path.join(root, 'hub/events.jsonl') }).load();
   const target = 'codex:' + owner; store.addTarget(target);
   const grant = createClientGrant({ runtimeDir: root, clientIdentity, targets: [target], maxRequests: 4, maxSubmits: 4 });

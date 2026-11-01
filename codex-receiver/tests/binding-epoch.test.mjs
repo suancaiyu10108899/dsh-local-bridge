@@ -60,7 +60,7 @@ test('explicit legacy configurations keep their existing unstamped message seman
 
 test('an old Hub cannot authorize installed delivery by accepting a self-reported epoch', async (t) => {
   const { c, m, targets } = fixture(t); c.instance_id = 'synthetic-instance'; c.idle_settle_ms = 3000;
-  const token = 'synthetic-epoch-compat-token'.padEnd(64, 'x');
+  const token = crypto.randomBytes(32).toString('hex');
   const store = new HubStore({ stateFile: path.join(c.runtime_dir, 'hub-state.json'), eventsFile: path.join(c.runtime_dir, 'hub-events.jsonl') }).load();
   const hub = new BridgeHub({ store, token, port: 0 }), address = await hub.start(); let q, dsh, calls = 0;
   const options = { host: '127.0.0.1', port: address.port, token };
@@ -85,7 +85,7 @@ test('same-instance Hub stamps new traffic while unstamped backlog remains held 
   const installation = { installation_id: c.installation_id, instance_id: c.instance_id, protocol_version: 1,
     runtime_root: runtimeRoot, hub_owner_kind: 'COMPANION_OWNED' };
   const configPath = path.join(c.runtime_dir, 'receiver-config.json'); fs.writeFileSync(configPath, JSON.stringify(c));
-  const token = 'synthetic-stamping-token'.padEnd(64, 'x');
+  const token = crypto.randomBytes(32).toString('hex');
   const store = new HubStore({ stateFile: path.join(runtimeRoot, 'hub-state.json'), eventsFile: path.join(runtimeRoot, 'hub-events.jsonl') }).load();
   const stamper = createTargetBindingStamper({ installation, runtimeRoot, locatorPath: c.locator_path });
   const hub = new BridgeHub({ store, token, port: 0, installation, targetBinding: stamper });
@@ -120,7 +120,7 @@ test('same-instance Hub stamps new traffic while unstamped backlog remains held 
 test('binding capability does not bypass a wrong instance or unsupported protocol', async (t) => {
   for (const mismatch of [{ instance_id: 'another-instance', protocol_version: 1 }, { instance_id: 'expected-instance', protocol_version: 2 }]) {
     const { c } = fixture(t); c.instance_id = 'expected-instance'; c.idle_settle_ms = 3000;
-    const token = 'synthetic-protocol-token'.padEnd(64, 'x');
+    const token = crypto.randomBytes(32).toString('hex');
     const store = new HubStore({ stateFile: path.join(c.runtime_dir, 'hub-state.json'), eventsFile: path.join(c.runtime_dir, 'events.jsonl') }).load();
     const hub = new BridgeHub({ store, token, port: 0, installation: { installation_id: c.installation_id, ...mismatch },
       targetBinding: (envelope) => ({ ok: true, envelope }) });

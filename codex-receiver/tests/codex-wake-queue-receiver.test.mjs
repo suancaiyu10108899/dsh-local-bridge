@@ -135,7 +135,7 @@ test('lifecycle parser ignores partial records and refuses active/interrupted/un
 
 async function integration(t, executeNative) {
   const f = fixture(t, { max_native_submissions: 1 });
-  const token = 'isolated-codex-receiver-token'.padEnd(64, 'x');
+  const token = crypto.randomBytes(32).toString('hex');
   const store = new HubStore({ stateFile: path.join(f.dir, 'hub-state.json'), eventsFile: path.join(f.dir, 'hub-events.jsonl') }).load();
   const hub = new BridgeHub({ store, token, port: 0 });const address = await hub.start();
   const options = { host: '127.0.0.1', port: address.port, token };

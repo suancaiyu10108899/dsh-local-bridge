@@ -26,7 +26,7 @@ jobs:
       - name: Show version
         run: node --version
       - name: Run tests
-        run: node --test tests/*.test.mjs
+        run: node --test --test-concurrency=1 tests/*.test.mjs
   codex-receiver:
     name: codex-receiver-node-24.15
     runs-on: windows-latest
@@ -39,4 +39,4 @@ jobs:
       - name: Show version
         run: node --version
       - name: Run optional Codex receiver tests
-        run: node --test codex-receiver/tests/*.test.mjs
+        run: node --test --test-concurrency=1 codex-receiver/tests/*.test.mjs

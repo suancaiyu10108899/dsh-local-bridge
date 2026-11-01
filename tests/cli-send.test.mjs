@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { HubStore } from '../src/store.mjs';
 import { BridgeHub } from '../src/hub.mjs';
 
 const run = promisify(execFile);
-const TOKEN = 'cli-send-test-token-'.padEnd(64, 'x');
+const TOKEN = crypto.randomBytes(32).toString('hex');
 
 function tempRuntime(port) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lab-cli-send-'));

@@ -174,6 +174,48 @@ test('COMPANION_OWNED starts only its own child, writes service state, and relea
     fs.rmSync(ctx.root, { recursive: true, force: true });
   }
 });
+test('concurrent stop callers await one complete stop instead of returning early status', async () => {
+  const ctx = tempInstallation();
+  let child = null;
+  let armed = false;
+  let releaseGate = null;
+  let gateStarted = null;
+  const gate = new Promise((resolve) => { releaseGate = resolve; });
+  const enteredGate = new Promise((resolve) => { gateStarted = resolve; });
+  try {
+    const manager = createCompanionHub(baseOptions(ctx, {
+      probeHub: async () => (child === null ? { state: 'ABSENT' } : { state: 'SAME', info: { installation_id: 'install-hub', instance_id: 'instance-hub', protocol_version: 1 } }),
+      spawnProcess: () => { child = fakeChild(); return child; },
+      processProvider: async (pid) => {
+        if (armed && pid === 5000) {
+          armed = false;
+          gateStarted();
+          await gate;
+        }
+        return { pid, ...processIdentity };
+      },
+    }));
+    assert.equal((await manager.start()).lifecycle, 'READY');
+    armed = true;
+    const first = manager.stop();
+    await enteredGate;
+    const second = manager.stop();
+    assert.equal(second, first);
+    let secondSettled = false;
+    second.then(() => { secondSettled = true; }, () => { secondSettled = true; });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    assert.equal(secondSettled, false);
+    assert.equal(child.exitCode, null);
+    releaseGate();
+    const [firstStatus, secondStatus] = await Promise.all([first, second]);
+    assert.equal(child.exitCode, 0);
+    assert.equal(firstStatus, secondStatus);
+    assert.equal(fs.existsSync(hubOwnerLockFile(ctx.runtimeRoot)), false);
+  } finally {
+    releaseGate();
+    fs.rmSync(ctx.root, { recursive: true, force: true });
+  }
+});
 test('a second manager cannot take over an active owner lease or spawn a duplicate Hub', async () => {
   const ctx = tempInstallation();
   let spawned = 0;

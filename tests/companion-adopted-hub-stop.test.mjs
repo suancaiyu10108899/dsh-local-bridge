@@ -16,13 +16,36 @@ const COMPANION_ENTRY = path.join(PROJECT_ROOT, 'companion', 'main.mjs');
 function waitFor(predicate, { timeoutMs = 20_000, intervalMs = 50 } = {}) {
   return new Promise((resolve, reject) => {
     const deadline = Date.now() + timeoutMs;
-    const timer = setInterval(() => {
-      Promise.resolve().then(predicate).then((value) => {
-        if (value) { clearInterval(timer); resolve(value); return; }
-        if (Date.now() > deadline) { clearInterval(timer); reject(new Error('waitFor timeout')); }
-      }).catch((error) => { clearInterval(timer); reject(error); });
-    }, intervalMs);
+    let timer = null;
+    let timeout = null;
+    let inFlight = false;
+    let done = false;
+    const finish = (error, value) => {
+      if (done) return;
+      done = true;
+      if (timer !== null) clearInterval(timer);
+      if (timeout !== null) clearTimeout(timeout);
+      if (error) reject(error); else resolve(value);
+    };
+    const tick = async () => {
+      if (done || inFlight) return;
+      if (Date.now() > deadline) { finish(new Error('waitFor timeout')); return; }
+      inFlight = true;
+      try {
+        const value = await predicate();
+        if (value) finish(null, value);
+      } catch (error) {
+        finish(error);
+      } finally {
+        inFlight = false;
+        if (!done && Date.now() > deadline) finish(new Error('waitFor timeout'));
+      }
+    };
+    timer = setInterval(() => { void tick(); }, intervalMs);
     timer.unref?.();
+    timeout = setTimeout(() => finish(new Error('waitFor timeout')), timeoutMs);
+    timeout.unref?.();
+    void tick();
   });
 }
 
@@ -60,7 +83,14 @@ test('global STOP stops an adopted own Hub that was not crashed first', { timeou
   let hubStopped = false;
   try {
     const server = await waitFor(() => (fs.existsSync(runtime.serverInfoFile) ? JSON.parse(fs.readFileSync(runtime.serverInfoFile, 'utf8')) : null), { timeoutMs: 20_000 });
-    const identity = await readProcessIdentity(server.pid);
+    const identity = await waitFor(async () => {
+      const value = await readProcessIdentity(server.pid);
+      return value.alive === true && value.available === true &&
+        typeof value.created_at === 'string' && typeof value.exe_path === 'string' && typeof value.entry_path === 'string'
+        ? value : null;
+    }, { timeoutMs: 45_000 }).catch((error) => {
+      throw new Error(`${error.message}; identity_proof_unavailable pid=${server.pid} hubExit=${hubChild.exitCode}`);
+    });
     assert.equal(identity.alive, true);
     fs.mkdirSync(path.join(runtime.runtimeRoot ?? installation.runtime_root, 'companion'), { recursive: true });
     fs.writeFileSync(path.join(installation.runtime_root, 'companion', 'hub-generation.json'), JSON.stringify({
@@ -79,7 +109,9 @@ test('global STOP stops an adopted own Hub that was not crashed first', { timeou
     mainChild.stdout.on('data', onData);
     mainChild.stderr.on('data', onData);
     await waitFor(() => lines.some((line) => line.includes('companion/status')), { timeoutMs: 20_000 });
-    await waitFor(() => lines.some((line) => line.includes('adopted_own_hub"') || line.includes('adopted_own_hub:true')), { timeoutMs: 20_000 });
+    await waitFor(() => lines.some((line) => line.includes('adopted_own_hub":true')), { timeoutMs: 20_000 }).catch((error) => {
+      throw new Error(`${error.message}; adopted_status_missing mainExit=${mainChild.exitCode}`);
+    });
     assert.equal((await readProcessIdentity(server.pid)).alive, true);
     fs.writeFileSync(path.join(installation.runtime_root, 'desired-state.json'), JSON.stringify({ desired_state: 'STOPPED' }));
     await waitFor(() => mainChild.exitCode !== null, { timeoutMs: 20_000 });

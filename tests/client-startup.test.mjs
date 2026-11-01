@@ -5,14 +5,16 @@ import { spawnSync } from 'node:child_process';
 const clientUrl = new URL('../src/client.mjs', import.meta.url).href;
 const pluginUrl = new URL('../adapters/dsh/plugin.mjs', import.meta.url).href;
 const prelude = `
+  import crypto from 'node:crypto';
   import net from 'node:net';
   import assert from 'node:assert/strict';
   import { HubClient } from ${JSON.stringify(clientUrl)};
   import { startHubLoop } from ${JSON.stringify(pluginUrl)};
+  const token = crypto.randomBytes(32).toString('hex');
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   const listen = server => new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const stop = server => new Promise(resolve => server.close(resolve));
-  const options = port => ({ host: '127.0.0.1', port, token: 'startup-test-token', role: 'dsh', identity: 'dsh:startup-test' });
+  const options = port => ({ host: '127.0.0.1', port, token, role: 'dsh', identity: 'dsh:startup-test' });
   async function closedPort() {
     const server = net.createServer();
     await listen(server);
