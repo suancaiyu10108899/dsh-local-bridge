@@ -12,7 +12,8 @@ import { installationPaths, readInstallation, writeInstallationAtomic } from '..
 import { createTargetBindingStamper } from '../src/target-binding.mjs';
 import { DEFAULT_CONFIG, runtimePaths, writeJsonAtomic } from '../src/runtime.mjs';
 import { createMembership, writeMembershipAtomic } from '../src/membership.mjs';
-import { prepareDaily, enableDaily, disableDaily } from '../codex-receiver/adapters/codex/receiver-control.mjs';
+import { prepareDaily, enableDaily, disableDaily, receiverStatus } from '../codex-receiver/adapters/codex/receiver-control.mjs';
+import { readProcessIdentity } from '../src/process-identity.mjs';
 
 const PROJECT_ROOT = path.resolve(import.meta.dirname, '..');
 const COMPANION_ENTRY = path.join(PROJECT_ROOT, 'companion', 'main.mjs');
@@ -229,9 +230,22 @@ test('real daily-receiver entry connects an isolated empty Hub, stays ONLINE_IDL
   assert.equal(disabled.stop_confirmed, true);
   assert.equal(disabled.running, false);
   assert.equal(disabled.service_running, false);
-  await waitFor(() => {
-    if (!fs.existsSync(statusFile)) return null;
-    const value = JSON.parse(fs.readFileSync(statusFile, 'utf8'));
-    return value.status === 'DISABLED' && value.enabled === false ? value : null;
-  }, { timeoutMs: 10_000 });
+  // The worker's final self-written status.json is not a liveness oracle: on
+  // Windows companion SIGTERM can win the race with the worker's 500ms loop.
+  // Use the authoritative read-only receiver status, disabled membership, and
+  // a fresh OS identity check for the worker PID instead.
+  const finalStatus = await receiverStatus(configPath);
+  assert.equal(finalStatus.running, false);
+  assert.equal(finalStatus.service_running, false);
+  const membershipDir = path.join(installation.runtime_root, 'memberships');
+  const memberFile = fs.readdirSync(membershipDir)
+    .map((name) => path.join(membershipDir, name))
+    .find((file) => JSON.parse(fs.readFileSync(file, 'utf8')).target === TARGET);
+  assert.ok(memberFile, 'target membership must exist');
+  const member = JSON.parse(fs.readFileSync(memberFile, 'utf8'));
+  assert.equal(member.desired_state, 'DISABLED');
+  assert.equal(member.enabled, false);
+  let finalIdentity = null;
+  try { finalIdentity = await readProcessIdentity(runningStatus.pid); } catch { finalIdentity = null; }
+  assert.equal(finalIdentity?.alive, false, 'worker PID must be freshly gone after confirmed disable');
 });

@@ -42,9 +42,7 @@ function waitFor(predicate, { timeoutMs = 20_000, intervalMs = 50 } = {}) {
       }
     };
     timer = setInterval(() => { void tick(); }, intervalMs);
-    timer.unref?.();
     timeout = setTimeout(() => finish(new Error('waitFor timeout')), timeoutMs);
-    timeout.unref?.();
     void tick();
   });
 }
