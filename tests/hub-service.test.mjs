@@ -104,3 +104,21 @@ test('managed hub restarts its own child after an unexpected exit', async () => 
     fs.rmSync(runtimeDir, { recursive: true, force: true });
   }
 });
+test('new plugin mode without Hub ownership never falls back to spawning a Hub', async () => {
+  const runtimeDir = tempRuntime();
+  try {
+    const service = createHubService({
+      runtimeDir,
+      ownerMode: 'COMPANION_OWNED',
+      spawnProcess: () => { throw new Error('must not spawn'); },
+    });
+    const result = await service.ensureStarted();
+    assert.equal(result.ok, false);
+    assert.equal(result.code, 'NOT_HUB_OWNER');
+    assert.equal(fs.existsSync(path.join(runtimeDir, 'hub', 'server.json')), false);
+    assert.equal(service.status().can_manage_hub, false);
+    await service.stop();
+  } finally {
+    fs.rmSync(runtimeDir, { recursive: true, force: true });
+  }
+});

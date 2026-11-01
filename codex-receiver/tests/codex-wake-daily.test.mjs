@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { HubStore } from '../src/store.mjs';
 import { BridgeHub } from '../src/hub.mjs';
@@ -21,12 +22,15 @@ after(() => { if (!saved) delete process.env.CODEX_THREAD_ID; });
 const sender = 'dsh:session-11111111-1111-4111-8111-111111111111';
 const sender2 = 'dsh:session-22222222-2222-4222-8222-222222222222';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const unitIdentity = async (pid) => ({ pid, alive: true, available: true, source: 'injected-unit',
+  created_at: '2026-01-01T00:00:00.000Z', exe_path: process.execPath, entry_path: fileURLToPath(import.meta.url) });
 function fixture(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lab-daily-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  const cli = path.join(dir, 'inert-cli');fs.writeFileSync(cli, 'never executed');
+  const cli = path.join(dir, 'OpenAI', 'Codex', 'bin', 'aaaaaaaaaaaaaaaa', 'codex.exe');
+  fs.mkdirSync(path.dirname(cli), { recursive: true });fs.writeFileSync(cli, 'never executed');
   const c = { v: 2, mode: 'daily', transport: 'target-pull', enabled: true, thread_id: thread,
-    allowed_senders: [sender, sender2], cli, cli_sha256: binaryHash(cli), workspace: dir,
+    allowed_senders: [sender, sender2], cli, cli_sha256: binaryHash(cli), cli_version: 'codex-cli 0.163.0-alpha.11.2', workspace: dir,
     rollout_path: path.join(dir, 'rollout.jsonl'), state_db: path.join(dir, 'state.sqlite'), runtime_dir: path.join(dir, 'runtime'),
     activated_at: new Date(Date.now() - 10000).toISOString(), expires_at: null, window_id: crypto.randomUUID(),
     max_native_submissions: null, rate_limit: { max_submissions: 6, window_ms: 3600000 }, min_interval_ms: 30000,
@@ -131,7 +135,7 @@ test('daily loop retries Hub loss, recovers, stays alive beyond old expiry, then
   const { c, file, dir } = fixture(t);const h = await hubFixture(t, dir);await h.hub.stop();
   let now = Date.now(), cycles = 0, recovered = false;let next;
   const options = { ...h.options };
-  await runDaily(file, { hubOptions: options, now: () => now, lifecycle: () => idle(now), checkBinding: async () => true,
+  await runDaily(file, { hubOptions: options, now: () => now, lifecycle: () => idle(now), checkBinding: async () => true, identityProvider: unitIdentity,
     wait: async (ms) => {
       now += ms;cycles++;
       if (cycles === 3) {
@@ -151,7 +155,7 @@ test('daily loop retries Hub loss, recovers, stays alive beyond old expiry, then
 test('owner lifecycle prepare is idempotent and cannot overwrite another target', async (t) => {
   const { c, file, dir } = fixture(t);fs.unlinkSync(file);
   const opts = { senders: [sender], cli: c.cli, configPath: file, stateDb: c.state_db, runtimeRoot: c.runtime_dir,
-    inspectCli: async () => ({ stdout: '--thread --message' }) };
+    inspectCli: async () => ({ stdout: '--thread --message', version: 'codex-cli 0.163.0-alpha.11.2' }) };
   const a = await prepareDaily(opts), b = await prepareDaily(opts);
   assert.equal(a.status, 'PREPARED_DISABLED');assert.equal(b.status, 'ALREADY_CONFIGURED');
   assert.equal(a.config.window_id, b.config.window_id);
@@ -159,30 +163,34 @@ test('owner lifecycle prepare is idempotent and cannot overwrite another target'
   await assert.rejects(prepareDaily({ ...opts, configPath: other }), /OWNER_TARGET_MISMATCH/);
 });
 
-test('real independent busy worker enable/disable is idempotent and never connects to production Hub', async (t) => {
+test('real independent busy worker enable/disable is idempotent and never connects to production Hub', { skip: process.platform !== 'win32' }, async (t) => {
   const { c, file } = fixture(t);fs.writeFileSync(file, JSON.stringify({ ...c, enabled: false }));
   try {
-    const a = await enableDaily(file), b = await enableDaily(file);
+    const cliOptions = { inspect: async () => ({ help: '--thread --message', version: 'codex-cli 0.163.0-alpha.11.2' }) };
+    const a = await enableDaily(file, { cliOptions }), b = await enableDaily(file, { cliOptions });
     assert.equal(a.action, 'ENABLED');assert.equal(b.action, 'ALREADY_RUNNING');assert.equal(a.pid, b.pid);
-    assert.equal(receiverStatus(file).expires_at, null);
+    assert.equal(a.worker_nonce, b.worker_nonce);assert.equal(a.process_created_at, b.process_created_at);
+    assert.equal((await receiverStatus(file)).expires_at, null);
     const d = await disableDaily(file);assert.equal(d.status, 'DISABLED');assert.equal(d.running, false);
     assert.equal((await disableDaily(file)).status, 'DISABLED');
   } finally { await disableDaily(file); }
 });
 
-test('supervisor recovers only its own crashed worker without restarting any host or losing the ledger', async (t) => {
+test('supervisor recovers only its own crashed worker without restarting any host or losing the ledger', { skip: process.platform !== 'win32' }, async (t) => {
   const { c, file } = fixture(t);fs.writeFileSync(file, JSON.stringify({ ...c, enabled: false }));
   try {
-    const original = await enableDaily(file);
+    const original = await enableDaily(file, { cliOptions: { inspect: async () => ({ help: '--thread --message', version: 'codex-cli 0.163.0-alpha.11.2' }) } });
     const lock = JSON.parse(fs.readFileSync(path.join(c.runtime_dir, 'receiver.lock')));
     assert.equal(lock.pid, original.pid);assert.equal(lock.thread_id, thread);
     // This PID is the isolated worker just started by this test, never a shared process.
     process.kill(original.pid, 'SIGKILL');
-    const end = Date.now() + 7000;let recovered;
+    // Identity verification includes fresh Windows CIM reads; observe well
+    // within the Stage A 60-second recovery target without relying on PID age.
+    const end = Date.now() + 20000;let recovered;
     while (Date.now() < end) {
-      const status = receiverStatus(file);
-      if (status.healthy && status.pid !== original.pid) { recovered = status;break; }
-      await sleep(30);
+      const status = await receiverStatus(file);
+      if (status.healthy && status.worker_nonce !== original.worker_nonce && status.process_created_at !== original.process_created_at) { recovered = status;break; }
+      await sleep(100);
     }
     assert.ok(recovered);assert.equal(recovered.service_pid, original.service_pid);
     assert.equal(recovered.expires_at, null);

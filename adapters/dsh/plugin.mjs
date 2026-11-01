@@ -13,8 +13,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { HubClient } from '../../src/client.mjs';
 import { createHubService } from '../../src/hub-service.mjs';
+import { ensureBootstrap } from '../../src/companion-bootstrap.mjs';
 import { collectServiceStatus } from '../../src/service-status.mjs';
-import { RUNTIME_DIR, loadConfig, readToken } from '../../src/runtime.mjs';
+import { computeCodeIdentity, readComponentIdentity, writeComponentIdentity } from '../../src/code-identity.mjs';
+import { PROJECT_ROOT, RUNTIME_DIR, loadConfig, readToken } from '../../src/runtime.mjs';
+import { defaultInstallationRoot, installationPaths, readInstallation } from '../../src/installation.mjs';
+import { fileURLToPath } from 'node:url';
 
 export const name = 'local-agent-bridge';
 export const inject = ['agents', 'tools'];
@@ -23,18 +27,50 @@ export const SOURCE_KIND = 'local-agent-bridge/dsh';
 export const DURABLE_EVENT = 'agent/inbox/spliced';
 const DEFAULT_DURABLE_TIMEOUT_MS = 5_000;
 const RECONNECT_DELAY_MS = 3_000;
-const PLUGIN_LOG_FILE = path.join(RUNTIME_DIR, 'dsh-plugin', 'plugin.log');
 const PLUGIN_LOG_MAX_BYTES = 512 * 1024;
 
-/** Best-effort file log: the host's stderr is not readable while diagnosing. */
-function appendPluginLog(event, detail) {
-  try {
-    fs.mkdirSync(path.dirname(PLUGIN_LOG_FILE), { recursive: true });
-    const stat = fs.statSync(PLUGIN_LOG_FILE, { throwIfNoEntry: false });
-    if (stat !== undefined && stat.size > PLUGIN_LOG_MAX_BYTES) {
-      fs.renameSync(PLUGIN_LOG_FILE, `${PLUGIN_LOG_FILE}.1`);
+function pluginLogFile(runtimeDir) {
+  return path.join(runtimeDir, 'dsh-plugin', 'plugin.log');
+}
+
+/** Resolve every plugin data path from the matching installation locator. */
+export function resolvePluginRuntime({ env = process.env, projectRoot = PROJECT_ROOT } = {}) {
+  const explicitInstallation = typeof env.LAB_BRIDGE_INSTALLATION_ROOT === 'string' && env.LAB_BRIDGE_INSTALLATION_ROOT.length > 0;
+  const installationRoot = explicitInstallation ? path.resolve(env.LAB_BRIDGE_INSTALLATION_ROOT) : defaultInstallationRoot({ env });
+  const locator = installationPaths(installationRoot).locator;
+  if (fs.existsSync(locator)) {
+    const installation = readInstallation({ root: installationRoot, required: true });
+    if (path.resolve(installation.app_root) === path.resolve(projectRoot)) {
+      const ambient = typeof env.LAB_BRIDGE_RUNTIME_DIR === 'string' && env.LAB_BRIDGE_RUNTIME_DIR.length > 0
+        ? path.resolve(env.LAB_BRIDGE_RUNTIME_DIR) : null;
+      if (ambient !== null && ambient !== path.resolve(installation.runtime_root)) {
+        const error = new Error(`ambient LAB_BRIDGE_RUNTIME_DIR ${ambient} conflicts with installation runtime_root ${installation.runtime_root}`);
+        error.code = 'RUNTIME_INSTANCE_CONFLICT';
+        throw error;
+      }
+      return { runtimeDir: path.resolve(installation.runtime_root), installationRoot, installation, source: 'installation' };
     }
-    fs.appendFileSync(PLUGIN_LOG_FILE, `${JSON.stringify({ ts: new Date().toISOString(), event, ...detail })}\n`, 'utf8');
+    if (explicitInstallation) {
+      const error = new Error(`explicit installation app_root ${installation.app_root} does not match plugin app root ${projectRoot}`);
+      error.code = 'PLUGIN_APP_ROOT_MISMATCH';
+      throw error;
+    }
+  }
+  const ambient = typeof env.LAB_BRIDGE_RUNTIME_DIR === 'string' && env.LAB_BRIDGE_RUNTIME_DIR.length > 0
+    ? path.resolve(env.LAB_BRIDGE_RUNTIME_DIR) : null;
+  return { runtimeDir: ambient ?? RUNTIME_DIR, installationRoot, installation: null, source: ambient === null ? 'source' : 'ambient' };
+}
+
+/** Best-effort file log: the host's stderr is not readable while diagnosing. */
+function appendPluginLog(event, detail, runtimeDir) {
+  const file = pluginLogFile(runtimeDir);
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const stat = fs.statSync(file, { throwIfNoEntry: false });
+    if (stat !== undefined && stat.size > PLUGIN_LOG_MAX_BYTES) {
+      fs.renameSync(file, `${file}.1`);
+    }
+    fs.appendFileSync(file, `${JSON.stringify({ ts: new Date().toISOString(), event, ...detail })}\n`, 'utf8');
   } catch {
     /* diagnostics must never break delivery */
   }
@@ -66,6 +102,12 @@ export function buildPeerMessage(input, createUserMessage) {
     msg_id: input.msg_id,
     via: 'local-hub',
     ...(typeof origin === 'string' && origin.length > 0 ? { origin } : {}),
+    ...(typeof input?.meta?.client_request_id === 'string' ? {
+      client_request_id: input.meta.client_request_id,
+      client_identity: input.from,
+      request_msg_id: input.msg_id,
+      reply_to: input.meta.reply_to,
+    } : {}),
   };
   if (typeof createUserMessage === 'function') {
     return createUserMessage({ content, source });
@@ -118,7 +160,27 @@ export function confirmDurable({ ctx, sessionId, messageId, timeoutMs = DEFAULT_
  * @param {object} options
  * @returns {(message: object, delivery: {ack: Function}) => Promise<void>}
  */
-export function createDeliveryHandler({ ctx, makeMessage, log = () => {}, durableTimeoutMs = DEFAULT_DURABLE_TIMEOUT_MS }) {
+export function createDeliveryHandler({ ctx, makeMessage, log = () => {}, durableTimeoutMs = DEFAULT_DURABLE_TIMEOUT_MS, getClient = () => null, pendingOutcomes = null }) {
+  const reportOutcome = async (client, gate, status, nativeQueueId, reason) => {
+    try {
+      await client.clientOutcome({
+        clientIdentity: gate.clientIdentity, clientRequestId: gate.clientRequestId,
+        targetIdentity: gate.targetIdentity, requestMsgId: gate.requestMsgId,
+        outcome: status, nativeQueueId, leaseId: gate.leaseId, fencingToken: gate.fencingToken, code: reason,
+      });
+      return { ok: true };
+    } catch (error) {
+      log('dsh-plugin/client-outcome-failed', { request_id: gate.clientRequestId, status, code: error?.code ?? null });
+      if (pendingOutcomes !== null) {
+        pendingOutcomes.set(`${gate.clientIdentity}|${gate.clientRequestId}`, {
+          clientIdentity: gate.clientIdentity, clientRequestId: gate.clientRequestId,
+          targetIdentity: gate.targetIdentity, requestMsgId: gate.requestMsgId,
+          outcome: status, nativeQueueId, leaseId: gate.leaseId, fencingToken: gate.fencingToken, code: reason,
+        });
+      }
+      return { ok: false, error };
+    }
+  };
   return async function deliver(message, delivery) {
     const target = String(message?.to ?? '');
     if (!target.startsWith('dsh:')) {
@@ -129,8 +191,46 @@ export function createDeliveryHandler({ ctx, makeMessage, log = () => {}, durabl
     const agent = ctx.agents.get(sessionId);
     if (agent === undefined || agent === null) {
       log('dsh-plugin/session-not-live', { sessionId, msg_id: message.msg_id });
-      delivery.ack({ ok: false, code: 'session-not-live', retryable: true });
+      delivery.ack({ ok: false, code: 'session-not-live', retryable: true, ...(typeof message?.meta?.client_request_id === 'string' ? { no_native: true } : {}) });
       return;
+    }
+    const clientRequestId = message?.meta?.client_request_id;
+    let gate = null;
+    let client = null;
+    if (typeof clientRequestId === 'string' && clientRequestId.length > 0) {
+      client = getClient();
+      if (client === null || client.closed) {
+        delivery.ack({ ok: false, code: 'client-gate-hub-disconnected', retryable: true, no_native: true });
+        return;
+      }
+      let claimed;
+      try {
+        claimed = await client.clientClaim({
+          clientIdentity: message.from, clientRequestId, targetIdentity: target,
+          requestMsgId: message.msg_id, ownerIdentity: target,
+          receiverNonce: `dsh:${process.pid}`,
+        });
+      } catch (error) {
+        log('dsh-plugin/client-claim-failed', { sessionId, msg_id: message.msg_id, request_id: clientRequestId, code: error?.code ?? null });
+        delivery.ack({ ok: false, code: error?.code ?? 'client-claim-failed', retryable: true, no_native: true });
+        return;
+      }
+      gate = {
+        clientIdentity: message.from, clientRequestId, targetIdentity: target,
+        requestMsgId: message.msg_id,
+        leaseId: claimed.lease?.id, fencingToken: claimed.lease?.fencing_token,
+      };
+      try {
+        await client.clientBegin({
+          clientIdentity: gate.clientIdentity, clientRequestId, targetIdentity: target,
+          requestMsgId: gate.requestMsgId, leaseId: gate.leaseId, fencingToken: gate.fencingToken,
+        });
+      } catch (error) {
+        log('dsh-plugin/client-begin-failed', { sessionId, msg_id: message.msg_id, request_id: clientRequestId, code: error?.code ?? null });
+        await reportOutcome(client, gate, 'NOT_SUBMITTED', null, error?.code ?? 'client-begin-failed');
+        delivery.ack({ ok: false, code: error?.code ?? 'client-begin-failed', retryable: false, no_native: true });
+        return;
+      }
     }
     const peerMessage = makeMessage(message);
     const durable = confirmDurable({ ctx, sessionId, messageId: peerMessage.id, timeoutMs: durableTimeoutMs });
@@ -138,20 +238,39 @@ export function createDeliveryHandler({ ctx, makeMessage, log = () => {}, durabl
       agent.followup(peerMessage);
     } catch (error) {
       log('dsh-plugin/followup-failed', { sessionId, msg_id: message.msg_id, message: String(error) });
-      delivery.ack({ ok: false, code: 'followup-failed', retryable: false });
+      // followup may have appended to the native inbox before throwing. Never
+      // claim a known no-native outcome and never retry automatically.
+      if (gate !== null) await reportOutcome(client, gate, 'UNCERTAIN', null, 'followup-threw-after-invocation');
+      delivery.ack({ ok: false, code: 'followup-uncertain', retryable: false });
       return;
     }
     const confirmed = await durable;
     if (!confirmed) {
       log('dsh-plugin/durability-unconfirmed', { sessionId, msg_id: message.msg_id });
+      if (gate !== null) await reportOutcome(client, gate, 'UNCERTAIN', null, 'durability-unconfirmed');
       delivery.ack({ ok: false, code: 'durability-unconfirmed', retryable: false });
       return;
+    }
+    if (gate !== null) {
+      await reportOutcome(client, gate, 'NATIVE_QUEUED', peerMessage.id, null);
     }
     log('dsh-plugin/delivered', { sessionId, msg_id: message.msg_id, message_id: peerMessage.id });
     delivery.ack({ ok: true, detail: { session_id: sessionId, message_id: peerMessage.id } });
   };
 }
-
+/** Retry pending DSH client outcomes with the same lease/native evidence. */
+export async function flushPendingOutcomes(client, pendingOutcomes, log = () => {}) {
+  if (client === null || client.closed || pendingOutcomes === null) return;
+  for (const [key, item] of pendingOutcomes) {
+    try {
+      await client.clientOutcome(item);
+      pendingOutcomes.delete(key);
+      log('dsh-plugin/client-outcome-recovered', { request_id: item.clientRequestId, outcome: item.outcome });
+    } catch (error) {
+      log('dsh-plugin/client-outcome-retry-failed', { request_id: item.clientRequestId, code: error?.code ?? null });
+    }
+  }
+}
 /**
  * Start the hub connection loop. Reconnects forever with a fixed delay; it does
  * not touch any model. Returns a disposer.
@@ -244,7 +363,7 @@ export function fallbackToolDefinition(spec) {
   };
 }
 
-function registerTools({ ctx, defineTool, identity, getClient, getServiceStatus }) {
+export function registerTools({ ctx, defineTool, identity, getClient, getServiceStatus }) {
   const buildTool = (spec) => (defineTool !== undefined ? defineTool(spec) : fallbackToolDefinition(spec));
   const requireClient = () => {
     const client = getClient();
@@ -286,6 +405,42 @@ function registerTools({ ctx, defineTool, identity, getClient, getServiceStatus 
     },
   }));
   ctx.tools.register(buildTool({
+    name: 'bridge_client_reply',
+    description: 'Reply exactly once to a restricted client request delivered to this DSH session. Use the actual client request IDs from the inbound wrapper and the real receiving turn id; never invent a turn UUID.',
+    parameters: {
+      client_identity: { type: 'string', required: true, description: 'Exact client:dot-<uuid> source identity from the inbound request.' },
+      client_request_id: { type: 'string', required: true, description: 'Business client_request_id from the inbound request meta.' },
+      request_msg_id: { type: 'string', required: true, description: 'Durable Hub msg_id of the inbound request.' },
+      turn_id: { type: 'string', required: true, description: 'Actual receiving DSH turn UUID; do not fabricate one.' },
+      body: { type: 'string', required: true, description: 'UTF-8 reply text (bounded).' },
+    },
+    output: { schema: { type: 'json' } },
+    async execute(args, exec) {
+      const sessionId = exec?.agent?.session?.id;
+      if (typeof sessionId !== 'string') return { ok: false, code: 'no-session', message: 'bridge_client_reply requires a session context' };
+      const turnId = typeof args.turn_id === 'string' && args.turn_id.length > 0
+        ? args.turn_id
+        : (exec?.turn?.id ?? exec?.agent?.turn?.id);
+      if (typeof turnId !== 'string' || turnId.length === 0) {
+        return { ok: false, code: 'turn-id-required', message: 'actual receiving turn UUID is required; no UUID is fabricated' };
+      }
+      let client;
+      try { client = requireClient(); } catch (error) { return { ok: false, code: 'hub-disconnected', message: error.message }; }
+      try {
+        const response = await client.clientReply({
+          clientIdentity: args.client_identity,
+          clientRequestId: args.client_request_id,
+          targetIdentity: `dsh:${sessionId}`,
+          requestMsgId: args.request_msg_id,
+          turnId,
+          body: args.body,
+        });
+        return { ok: true, idempotent: response.idempotent === true, request: response.request, reply: response.reply };
+      } catch (error) {
+        return { ok: false, code: error.code ?? 'client-reply-failed', message: error.message };
+      }
+    },
+  }));  ctx.tools.register(buildTool({
     name: 'bridge_status',
     description: 'Read bridge delivery state for one message id, or the recent queued/recent messages addressed to this session.',
     parameters: {
@@ -352,28 +507,93 @@ function registerTools({ ctx, defineTool, identity, getClient, getServiceStatus 
 /** Cordis plugin entry. */
 export async function apply(ctx, config = {}) {
   if (config.enabled === false) return;
+  let pluginRuntime;
+  try {
+    pluginRuntime = resolvePluginRuntime();
+  } catch (error) {
+    try {
+      process.stderr.write(`${JSON.stringify({ ts: new Date().toISOString(), plugin: name, event: 'dsh-plugin/runtime-context-rejected', code: error?.code ?? null, message: String(error?.message ?? error) })}\n`);
+    } catch { /* ignore logging failure */ }
+    return;
+  }
+  const runtimeDir = pluginRuntime.runtimeDir;
   const log = (event, detail) => {
-    appendPluginLog(event, detail);
+    appendPluginLog(event, detail, runtimeDir);
     try {
       process.stderr.write(`${JSON.stringify({ ts: new Date().toISOString(), plugin: name, event, ...detail })}\n`);
     } catch {
       /* ignore logging failures */
     }
   };
+  log('dsh-plugin/runtime-context', { runtimeDir, installationRoot: pluginRuntime.installationRoot, source: pluginRuntime.source });
 
-  const base = loadConfig();
+  const pluginIdentity = computeCodeIdentity({
+    rootDir: path.resolve(import.meta.dirname, '..', '..'),
+    component: 'dsh-plugin',
+    entry: fileURLToPath(import.meta.url),
+  });
+  let pluginIdentityFile = null;
+  try {
+    pluginIdentityFile = writeComponentIdentity({ runtimeDir, component: 'dsh-plugin', identity: pluginIdentity });
+    log(pluginIdentity.status === 'OBSERVED' ? 'dsh-plugin/code-identity-loaded' : 'dsh-plugin/code-identity-unverified', {
+      source_sha256: pluginIdentity.source_sha256,
+      entry: pluginIdentity.entry,
+      package_version: pluginIdentity.package_version,
+      release_channel: pluginIdentity.release_channel,
+      identity_file: pluginIdentityFile.path,
+    });
+  } catch (error) {
+    log('dsh-plugin/code-identity-write-failed', { message: String(error?.message ?? error) });
+  }
+
+  const base = loadConfig({ runtimeDir });
   const hubOptions = {
     host: config.hubHost ?? base.host,
     port: config.hubPort ?? base.port,
   };
 
-  // One visible managed companion: the plugin owns the Hub child unless the
-  // user explicitly manages the Hub themselves. An already-running Hub is
-  // reused and never killed by this plugin.
-  const managedHub = config.manageHub === false ? null : createHubService({ log });
+  // One background lifecycle owner. An installed COMPANION_OWNED root uses the
+  // detached companion bootstrap; legacy runtimes without a locator keep the
+  // existing in-process Hub service fallback. Both never own the Hub at once.
+  // A persisted explicit-stop marker always wins over DSH startup.
+  let bootstrap = null;
+  let bootstrapError = false;
+  if (config.companionBootstrap !== false && pluginRuntime.installation !== null) {
+    try {
+      bootstrap = await ensureBootstrap({
+        installationRoot: pluginRuntime.installationRoot,
+        runtimeDir,
+        reason: 'DSH_START',
+        env: process.env,
+      });
+      log('dsh-plugin/companion-bootstrap', {
+        decision: bootstrap.decision,
+        outcome: bootstrap.outcome,
+        ok: bootstrap.ok,
+        reason_code: bootstrap.reason_code ?? null,
+        explicit_stop_active: bootstrap.explicit_stop_active === true,
+      });
+    } catch (error) {
+      bootstrap = null;
+      bootstrapError = true;
+      log('dsh-plugin/companion-bootstrap-failed', { message: String(error?.message ?? error) });
+    }
+  }
+  const bootstrapOutcomes = new Set([
+    'STARTED_OWNER_VERIFIED', 'STARTED_OWNER_UNCONFIRMED',
+    'ATTACHED_VERIFIED_OWNER', 'ATTACHED_LAUNCH_PENDING', 'ATTACHED_EXISTING_HUB', 'IN_FLIGHT',
+  ]);
+  const bootstrapOwnsLifecycle = bootstrap !== null
+    && bootstrap.ok === true
+    && bootstrapOutcomes.has(bootstrap.outcome);
+  const legacyFallback = !bootstrapOwnsLifecycle && !bootstrapError
+    && (bootstrap === null || ['NO_INSTALLATION', 'NOT_MANAGED'].includes(bootstrap.decision));
+  const managedHub = config.manageHub === false || !legacyFallback
+    ? null
+    : createHubService({ log, ownerMode: config.hubOwnerMode, runtimeDir });
   if (managedHub !== null) {
     void managedHub.ensureStarted()
-      .then((result) => log('dsh-plugin/hub-service-ready', result))
+      .then((result) => log(result.ok ? 'dsh-plugin/hub-service-ready' : 'dsh-plugin/hub-not-owner', result))
       .catch((error) => log('dsh-plugin/hub-service-failed', {
         code: error?.code ?? 'hub-service-failed',
         message: String(error?.message ?? error),
@@ -397,25 +617,33 @@ export async function apply(ctx, config = {}) {
 
   const makeMessage = (message) => buildPeerMessage(message, createUserMessage);
   const identity = `dsh:host:${globalThis.crypto.randomUUID().slice(0, 8)}`;
-  const deliveryHandler = createDeliveryHandler({ ctx, makeMessage, log });
+  const pendingClientOutcomes = new Map();
+  const deliveryHandler = createDeliveryHandler({ ctx, makeMessage, log, getClient: () => currentClient, pendingOutcomes: pendingClientOutcomes });
 
   let currentClient = null;
   const disposeHub = startHubLoop({
     clientFactory: () => new HubClient({
       host: hubOptions.host,
       port: hubOptions.port,
-      token: process.env.LAB_BRIDGE_TOKEN ?? readToken(),
+      token: readToken({ runtimeDir }),
       role: 'dsh',
       identity,
+      capabilities: { client_requests_v1: true },
       logger: (event, detail) => log(`client/${event}`, detail),
     }),
     onDelivery: deliveryHandler,
     onClient: (client) => {
       currentClient = client;
+      if (client !== null) void flushPendingOutcomes(client, pendingClientOutcomes, log);
     },
     log,
   });
   ctx.effect(() => disposeHub, 'local-agent-bridge.hub');
+  const outcomeRetryTimer = setInterval(() => {
+    if (currentClient !== null) void flushPendingOutcomes(currentClient, pendingClientOutcomes, log);
+  }, 15_000);
+  outcomeRetryTimer.unref?.();
+  ctx.effect(() => () => clearInterval(outcomeRetryTimer), 'local-agent-bridge.client-outcomes');
   if (managedHub !== null) {
     ctx.effect(() => async () => {
       await managedHub.stop();
@@ -431,8 +659,12 @@ export async function apply(ctx, config = {}) {
       identity,
       getClient: () => currentClient,
       getServiceStatus: () => ({
-        ...collectServiceStatus({ runtimeDir: RUNTIME_DIR }),
+        ...collectServiceStatus({ runtimeDir, installationRoot: pluginRuntime.installation === null ? null : pluginRuntime.installationRoot }),
         manage_hub_enabled: managedHub !== null,
+        companion_bootstrap: bootstrap === null ? null : {
+          decision: bootstrap.decision, outcome: bootstrap.outcome, ok: bootstrap.ok,
+          reason_code: bootstrap.reason_code ?? null, explicit_stop_active: bootstrap.explicit_stop_active === true,
+        },
         hub_client_connected: currentClient !== null && currentClient.closed !== true,
         managed_hub: managedHub === null ? null : managedHub.status(),
       }),

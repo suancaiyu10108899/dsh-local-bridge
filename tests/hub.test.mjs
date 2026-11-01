@@ -6,7 +6,10 @@ import path from 'node:path';
 import { HubStore } from '../src/store.mjs';
 import { BridgeHub } from '../src/hub.mjs';
 import { HubClient } from '../src/client.mjs';
-import { STATES } from '../src/protocol.mjs';
+import { STATES, validateEnvelope } from '../src/protocol.mjs';
+import { installationPaths, readInstallation, writeInstallationAtomic } from '../src/installation.mjs';
+import { registerMembershipEnable } from '../src/membership.mjs';
+import { createTargetBindingStamper, TARGET_BINDING_EPOCH_META_KEY } from '../src/target-binding.mjs';
 
 const TOKEN = 'test-token-'.padEnd(64, 'x');
 const HOST = '127.0.0.1';
@@ -16,9 +19,9 @@ function tempPaths() {
   return { dir, stateFile: path.join(dir, 'state.json'), eventsFile: path.join(dir, 'events.jsonl') };
 }
 
-async function startHub(t, { ackTimeoutMs = 5_000, maxAttempts = 5, paths = tempPaths() } = {}) {
+async function startHub(t, { ackTimeoutMs = 5_000, maxAttempts = 5, paths = tempPaths(), targetBinding = null, installation = null, logger = () => {} } = {}) {
   const store = new HubStore({ stateFile: paths.stateFile, eventsFile: paths.eventsFile }).load();
-  const hub = new BridgeHub({ store, token: TOKEN, host: HOST, port: 0, ackTimeoutMs, maxAttempts });
+  const hub = new BridgeHub({ store, token: TOKEN, host: HOST, port: 0, ackTimeoutMs, maxAttempts, targetBinding, installation, logger });
   const address = await hub.start();
   t.after(async () => {
     await hub.stop();
@@ -70,6 +73,9 @@ async function waitFor(predicate, { timeoutMs = 4_000, label = 'condition' } = {
 test('paired exact delivery reaches delivered after an adapter ACK', async (t) => {
   const { address } = await startHub(t);
   const { cli, dsh, codex } = await connectAll(t, address);
+  assert.equal(cli.welcomeInfo.installation_id, null);
+  assert.equal(cli.welcomeInfo.capabilities.target_binding_epoch, false);
+  assert.equal(cli.serverInfo, cli.welcomeInfo);
   await cli.pairAdd('dsh:session-1', { label: 'DSH test session' });
   await cli.pairAdd('codex:thread-1', { label: 'Codex test thread' });
 
@@ -369,4 +375,106 @@ test('session-not-live nacks defer a cold-session message without exhausting att
   assert.equal(later.state, STATES.DELIVERY_UNKNOWN, 'cold session must stay queued, not fail');
   assert.equal(later.attempts <= 2, true, 'deferrals must not consume the attempt budget');
   assert.equal(later.last_error, 'session-not-live');
+});
+test('server stamps target binding epoch, rejects conflicts, and leaves old records untouched', async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'bridge-binding-hub-'));
+  const paths = installationPaths(root);
+  fs.mkdirSync(paths.runtimeRoot, { recursive: true });
+  const installation = writeInstallationAtomic({
+    root,
+    installation: {
+      v: 1,
+      installation_id: 'install-hub-binding',
+      instance_id: 'instance-hub-binding',
+      active_version: '0.1.0-test',
+      app_root: path.join(root, 'app'),
+      runtime_root: paths.runtimeRoot,
+      hub_owner_kind: 'COMPANION_OWNED',
+      protocol_version: 1,
+      state_schema: 1,
+    },
+  });
+  const target = 'codex:thread-1';
+  const configDir = path.join(paths.runtimeRoot, 'codex', 'thread-1');
+  fs.mkdirSync(configDir, { recursive: true });
+  const configPath = path.join(configDir, 'receiver-config.json');
+  fs.writeFileSync(configPath, JSON.stringify({
+    thread_id: 'thread-1',
+    installation_id: installation.installation_id,
+    instance_id: installation.instance_id,
+    binding_epoch: 'epoch-server-1',
+    enabled: true,
+    owner_opt_in: true,
+    runtime_dir: configDir,
+    locator: paths.locator,
+  }));
+  registerMembershipEnable({
+    root: paths.runtimeRoot,
+    installation_id: installation.installation_id,
+    instance_id: installation.instance_id,
+    target,
+    binding_epoch: 'epoch-server-1',
+    config_path: configPath,
+  });
+  const targetBinding = createTargetBindingStamper({
+    installation: readInstallation({ root }),
+    runtimeRoot: paths.runtimeRoot,
+    locatorPath: paths.locator,
+  });
+  try {
+    const { store, address } = await startHub(t, {
+      targetBinding,
+      installation,
+      paths: tempPaths(),
+    });
+    const { cli, dsh, codex } = await connectAll(t, address);
+    assert.equal(cli.welcomeInfo.installation_id, installation.installation_id);
+    assert.equal(cli.welcomeInfo.instance_id, installation.instance_id);
+    assert.equal(cli.welcomeInfo.protocol_version, installation.protocol_version);
+    assert.equal(cli.welcomeInfo.capabilities.target_binding_epoch, true);
+    assert.equal(cli.serverInfo, cli.welcomeInfo);
+    await cli.pairAdd('dsh:session-1');
+    await cli.pairAdd(target);
+    await cli.pairAdd('codex:thread-legacy');
+    const received = [];
+    codex.onDelivery((message, delivery) => {
+      received.push(message);
+      delivery.ack({ ok: true });
+    });
+
+    const accepted = await dsh.sendMessage(envelope({ msg_id: 'm-binding-new' }));
+    assert.equal(accepted.type, 'accepted');
+    const record = await cli.status('m-binding-new');
+    assert.equal(record.meta[TARGET_BINDING_EPOCH_META_KEY], 'epoch-server-1');
+
+    await assert.rejects(
+      dsh.sendMessage(envelope({ msg_id: 'm-binding-conflict', meta: { [TARGET_BINDING_EPOCH_META_KEY]: 'epoch-other' } })),
+      (error) => error.code === 'target-binding-epoch-conflict',
+    );
+
+    const legacy = await dsh.sendMessage(envelope({ msg_id: 'm-binding-legacy', to: 'codex:thread-legacy' }));
+    assert.equal(legacy.type, 'accepted');
+    const legacyRecord = await cli.status('m-binding-legacy');
+    assert.equal(Object.hasOwn(legacyRecord.meta, TARGET_BINDING_EPOCH_META_KEY), false);
+    await assert.rejects(
+      dsh.sendMessage(envelope({ msg_id: 'm-binding-legacy-claim', to: 'codex:thread-legacy', meta: { [TARGET_BINDING_EPOCH_META_KEY]: 'self' } })),
+      (error) => error.code === 'target-binding-epoch-untrusted',
+    );
+
+    // Old persisted records are not backfilled when read/delivered.
+    const oldEnvelope = validateEnvelope({
+      v: 1,
+      msg_id: 'm-binding-old',
+      from: 'dsh:session-1',
+      to: target,
+      kind: 'text',
+      text: 'old no epoch',
+    }).envelope;
+    store.enqueue(oldEnvelope);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const oldRecord = await cli.status('m-binding-old');
+    assert.equal(Object.hasOwn(oldRecord.meta, TARGET_BINDING_EPOCH_META_KEY), false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });

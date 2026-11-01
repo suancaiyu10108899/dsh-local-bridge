@@ -19,6 +19,7 @@ export class HubClient {
   #token;
   #role;
   #identity;
+  #grantId;
   #logger;
   #socket = null;
   #decoder = createFrameDecoder();
@@ -28,6 +29,7 @@ export class HubClient {
   #frameHandlers = new Map();
   #closeHandlers = new Set();
   #welcome = null;
+  #welcomeInfo = null;
   #welcomeWaiter = null;
   #closed = false;
 
@@ -37,6 +39,7 @@ export class HubClient {
     this.#token = options.token;
     this.#role = options.role;
     this.#identity = options.identity;
+    this.#grantId = typeof options.grantId === 'string' ? options.grantId : undefined;
     this.#logger = options.logger ?? (() => {});
   }
 
@@ -50,6 +53,21 @@ export class HubClient {
 
   get welcome() {
     return this.#welcome;
+  }
+
+  /**
+   * Frozen handshake identity/capability object:
+   * { protocol_version, installation_id, instance_id,
+   *   capabilities: { target_binding_epoch } }.
+   * A missing capability is false; installed receivers must pause.
+   */
+  get welcomeInfo() {
+    return this.#welcomeInfo;
+  }
+
+  /** Alias of welcomeInfo for receiver/server-identity callers. */
+  get serverInfo() {
+    return this.#welcomeInfo;
   }
 
   get closed() {
@@ -107,6 +125,7 @@ export class HubClient {
           role: this.#role,
           identity: this.#identity,
           token: this.#token,
+          ...(this.#grantId === undefined ? {} : { grant_id: this.#grantId }),
         }));
         resolve();
       };
@@ -138,6 +157,15 @@ export class HubClient {
   #onFrame(frame) {
     if (frame?.type === 'welcome') {
       this.#welcome = frame;
+      this.#welcomeInfo = Object.freeze({
+        protocol_version: Number.isInteger(frame.protocol_version) ? frame.protocol_version : null,
+        installation_id: typeof frame.installation_id === 'string' ? frame.installation_id : null,
+        instance_id: typeof frame.instance_id === 'string' ? frame.instance_id : null,
+        capabilities: Object.freeze({
+          target_binding_epoch: frame.capabilities?.target_binding_epoch === true,
+          client_requests_v1: frame.capabilities?.client_requests_v1 === true,
+        }),
+      });
       this.#welcomeWaiter?.resolve(frame);
       this.#welcomeWaiter = null;
       return;
@@ -228,6 +256,78 @@ export class HubClient {
     return response.messages ?? [];
   }
 
+  async clientRequest({ clientRequestId, to, text, ttlMs } = {}, options = {}) {
+    const response = await this.request({
+      type: 'client-request', client_request_id: clientRequestId, to, text,
+      ...(ttlMs === undefined ? {} : { ttl_ms: ttlMs }),
+    }, options);
+    if (response.type === 'client-rejected') throw new HubClientError(response.code ?? 'client-request-rejected', response.message ?? 'client request rejected', response);
+    return response;
+  }
+
+  async clientStatus(clientRequestId, options = {}) {
+    const response = await this.request({ type: 'client-status', client_request_id: clientRequestId }, options);
+    if (response.type === 'client-rejected') throw new HubClientError(response.code ?? 'client-status-rejected', response.message ?? 'client status rejected', response);
+    return response.request;
+  }
+
+  async clientResume(clientRequestId, options = {}) {
+    const response = await this.request({ type: 'client-resume', client_request_id: clientRequestId }, options);
+    if (response.type === 'client-rejected') throw new HubClientError(response.code ?? 'client-resume-rejected', response.message ?? 'client resume rejected', response);
+    return response;
+  }
+
+  async clientCancel(clientRequestId, options = {}) {
+    const response = await this.request({ type: 'client-cancel', client_request_id: clientRequestId }, options);
+    if (response.type === 'client-rejected') throw new HubClientError(response.code ?? 'client-cancel-rejected', response.message ?? 'client cancel rejected', response);
+    return response.request;
+  }
+
+  async clientReply({ clientIdentity, clientRequestId, targetIdentity, requestMsgId, msgId, turnId, body, bodySha256 } = {}, options = {}) {
+    const response = await this.request({
+      type: 'client-reply', client_identity: clientIdentity, client_request_id: clientRequestId,
+      target_identity: targetIdentity, request_msg_id: requestMsgId ?? msgId, msg_id: requestMsgId ?? msgId, turn_id: turnId, body,
+      ...(bodySha256 === undefined ? {} : { body_sha256: bodySha256 }),
+    }, options);
+    if (response.ok !== true) throw new HubClientError(response.code ?? 'client-reply-rejected', response.message ?? 'client reply rejected', response);
+    return response;
+  }
+
+  async clientClaim({ clientIdentity, clientRequestId, targetIdentity, requestMsgId, msgId, claimLeaseMs, ownerIdentity, receiverNonce, bindingEpoch } = {}, options = {}) {
+    const response = await this.request({
+      type: 'client-claim', client_identity: clientIdentity, client_request_id: clientRequestId,
+      target_identity: targetIdentity, request_msg_id: requestMsgId ?? msgId,
+      ...(claimLeaseMs === undefined ? {} : { claim_lease_ms: claimLeaseMs }),
+      ...(ownerIdentity === undefined ? {} : { owner_identity: ownerIdentity }),
+      ...(receiverNonce === undefined ? {} : { receiver_nonce: receiverNonce }),
+      ...(bindingEpoch === undefined ? {} : { binding_epoch: bindingEpoch }),
+    }, options);
+    if (response.type === 'client-rejected' || response.ok === false) throw new HubClientError(response.code ?? 'client-claim-rejected', response.message ?? 'client claim rejected', response);
+    return { ...response, state: response.request?.state ?? response.state, claim: response.lease === undefined ? response.claim : { lease_id: response.lease?.id, fencing_token: response.lease?.fencing_token, expires_at: response.lease?.expires_at, owner_identity: response.lease?.owner_identity } };
+  }
+
+  async clientBegin({ clientIdentity, clientRequestId, targetIdentity, requestMsgId, msgId, leaseId, fencingToken } = {}, options = {}) {
+    const response = await this.request({
+      type: 'client-begin-submit', client_identity: clientIdentity, client_request_id: clientRequestId,
+      target_identity: targetIdentity, request_msg_id: requestMsgId ?? msgId,
+      lease_id: leaseId, fencing_token: fencingToken,
+    }, options);
+    if (response.type === 'client-rejected' || response.ok === false) throw new HubClientError(response.code ?? 'client-begin-rejected', response.message ?? 'client begin rejected', response);
+    return { ...response, state: response.request?.state ?? response.state };
+  }
+
+  async clientOutcome({ clientIdentity, clientRequestId, targetIdentity, requestMsgId, msgId, outcome, nativeQueueId, leaseId, fencingToken, code } = {}, options = {}) {
+    const response = await this.request({
+      type: 'client-outcome', client_identity: clientIdentity, client_request_id: clientRequestId,
+      target_identity: targetIdentity, request_msg_id: requestMsgId ?? msgId,
+      status: outcome, ...(nativeQueueId === undefined ? {} : { native_queue_id: nativeQueueId }),
+      ...(leaseId === undefined ? {} : { lease_id: leaseId }),
+      ...(fencingToken === undefined ? {} : { fencing_token: fencingToken }),
+      ...(code === undefined ? {} : { reason: code }),
+    }, options);
+    if (response.type === 'client-rejected' || response.ok === false) throw new HubClientError(response.code ?? 'client-outcome-rejected', response.message ?? 'client outcome rejected', response);
+    return { ...response, state: response.request?.state ?? response.status };
+  }
   async targets(options = {}) {
     const response = await this.request({ type: 'targets-query' }, options);
     return response.targets ?? [];

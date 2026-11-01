@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { PROJECT_ROOT, RUNTIME_DIR } from './runtime.mjs';
 import { serverInfoHealth } from './health.mjs';
+import { createRestartPolicy } from './restart-policy.mjs';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -39,13 +40,21 @@ export function createHubService({
   autoRestart = true,
   maxRestartAttempts = 10,
   restartDelaysMs = [1_000, 2_000, 5_000, 10_000, 30_000],
+  restartStableMs = 5 * 60_000,
+  ownerMode,
   spawnProcess = spawn,
 } = {}) {
   const serverInfoFile = path.join(runtimeDir, 'hub', 'server.json');
+  const restartPolicy = createRestartPolicy({
+    delaysMs: restartDelaysMs,
+    maxAttempts: maxRestartAttempts,
+    stableMs: restartStableMs,
+  });
   let child = null;
   let spawnError = null;
   let stopping = false;
   let restartTimer = null;
+  let stableTimer = null;
   let restartAttempts = 0;
   let restartCount = 0;
   let lastExit = null;
@@ -65,6 +74,8 @@ export function createHubService({
       exit_code: child?.exitCode ?? null,
       auto_restart: autoRestart && !stopping,
       auto_restart_halted: autoRestartHalted,
+      owner_mode: ownerMode ?? null,
+      can_manage_hub: ownerMode === undefined || ownerMode === 'DSH_PLUGIN_OWNED',
       restart_count: restartCount,
       restart_attempts: restartAttempts,
       next_restart_at: nextRestartAt,
@@ -90,17 +101,36 @@ export function createHubService({
     nextRestartAt = null;
   }
 
+  function clearStableTimer() {
+    if (stableTimer !== null) {
+      clearTimeout(stableTimer);
+      stableTimer = null;
+    }
+  }
+
+  function armStableTimer() {
+    clearStableTimer();
+    stableTimer = setTimeout(() => {
+      stableTimer = null;
+      const snapshot = restartPolicy.recordStable({ at: Date.now() });
+      restartAttempts = snapshot.attempts;
+      log('hub-service/stable-window', { attempts: snapshot.attempts });
+    }, restartStableMs);
+    stableTimer.unref?.();
+  }
+
   function scheduleRestart(reason) {
     if (!autoRestart || stopping || autoRestartHalted || restartTimer !== null) return;
-    if (restartAttempts >= maxRestartAttempts) {
+    const snapshot = restartPolicy.recordFailure({ at: Date.now(), code: reason });
+    restartAttempts = snapshot.attempts;
+    if (snapshot.halted) {
       autoRestartHalted = true;
-      log('hub-service/restart-halted', { attempts: restartAttempts, reason });
+      log('hub-service/restart-halted', { attempts: snapshot.attempts, reason });
       return;
     }
-    const delay = restartDelaysMs[Math.min(restartAttempts, restartDelaysMs.length - 1)] ?? 1_000;
-    restartAttempts += 1;
-    nextRestartAt = new Date(Date.now() + delay).toISOString();
-    log('hub-service/restart-scheduled', { delay, attempt: restartAttempts, reason });
+    const delay = snapshot.next_retry_at === null ? 1_000 : Math.max(0, Date.parse(snapshot.next_retry_at) - Date.now());
+    nextRestartAt = snapshot.next_retry_at;
+    log('hub-service/restart-scheduled', { delay, attempt: snapshot.attempts, reason });
     const timer = setTimeout(async () => {
       restartTimer = null;
       nextRestartAt = null;
@@ -108,8 +138,8 @@ export function createHubService({
       try {
         const result = await ensureStarted({ timeoutMs: startTimeoutMs });
         restartCount += 1;
-        restartAttempts = 0;
         lastRestartError = null;
+        armStableTimer();
         log('hub-service/restarted', { pid: result.pid, restart_count: restartCount });
       } catch (error) {
         lastRestartError = {
@@ -122,8 +152,7 @@ export function createHubService({
           message: lastRestartError.message,
           attempt: restartAttempts,
         });
-        if (restartAttempts >= maxRestartAttempts) {
-          autoRestartHalted = true;
+        if (autoRestartHalted) {
           log('hub-service/restart-halted', { attempts: restartAttempts, reason: 'restart-failed' });
         } else {
           scheduleRestart('restart-failed');
@@ -153,6 +182,14 @@ export function createHubService({
   }
 
   async function ensureStarted({ timeoutMs = startTimeoutMs } = {}) {
+    // A new plugin in another owner mode must not silently become a Hub owner.
+    if (ownerMode !== undefined && ownerMode !== 'DSH_PLUGIN_OWNED') {
+      const existing = health();
+      if (existing.present && existing.pidAlive) {
+        return { ok: true, started: false, reused: true, owner_mode: ownerMode, no_ownership: true, ...status() };
+      }
+      return { ok: false, code: 'NOT_HUB_OWNER', owner_mode: ownerMode, message: 'this installation mode does not grant Hub ownership to the DSH plugin' };
+    }
     // A manual ensure overrides a pending backoff timer; the companion will
     // try immediately instead of waiting out the previous delay.
     if (restartTimer !== null) clearRestartTimer();
@@ -199,7 +236,8 @@ export function createHubService({
       const info = health();
       if (info.present && info.pidAlive && info.pid === launched.pid) {
         autoRestartHalted = false;
-        restartAttempts = 0;
+        restartPolicy.recordHealthy({ at: Date.now() });
+        armStableTimer();
         log('hub-service/ready', { pid: info.pid, address: info.address });
         return { ok: true, started: true, reused: false, ...status() };
       }
@@ -213,6 +251,7 @@ export function createHubService({
   /** Stop only a Hub process started by this service instance. */
   async function stop() {
     clearRestartTimer();
+    clearStableTimer();
     stopping = true;
     const current = child;
     if (current === null) {

@@ -21,7 +21,7 @@ Successful delivery means "the target DSH conversation received the message and 
 
 - Not a universal agent-to-agent protocol.
 - Not a cross-machine, cloud, or multi-user service.
-- Not an unattended Codex bridge. The Codex native queue receiver is experimental and build-specific; **the DSH bundle excludes it**. The public repository contains a separate optional source package that users must review, install and run themselves.
+- Not an unattended Codex bridge. The current bundle **ships** the optional Codex receiver source, worker entry, shared core and receiver metadata, but receivers/workers are disabled by default; they can start only after the real original Codex owner explicitly opts in and enables them. The receiver remains experimental and build-specific; legacy/source-link installs stay separate and are not auto-migrated.
 - Not a GUI or a hosted product.
 - No guarantee of compatibility with DSH versions other than the tested build.
 - No promise of "open box" support for every DSH conversation.
@@ -113,14 +113,14 @@ With `manageHub: false`, start the Hub explicitly with `& $cli serve`.
 
 With a local `link:` checkout, runtime stays in the checkout's `.local/runtime`; keep using the source quickstart above.
 
-## Optional Codex receiver (experimental, not part of the DSH bundle)
+## Optional Codex receiver (source/worker included; disabled by default)
 
-`codex-receiver/` in this repository is a standalone optional CLI receiver source package, exported from the approved exact Codex source allowlist (MIT, source `c1da001`). The DSH bundle does **not** install or start it, create a login entry, or expand targets.
+The repository and npm bundle now include `codex-receiver/` source, worker entry, shared core and receiver metadata (MIT). It is **not an enabled bridge by default**: configs start `enabled=false`, and only the real original Codex owner can opt in/enable through the installed core CLI; a COMPANION_OWNED companion then restores only ENABLED members. It creates no login entry and expands no targets. Legacy/source-link installs remain separate and are not auto-migrated.
 
 - Requirements: same-user Windows, Node `>=24.15.0`, a user-installed Codex CLI; `node:sqlite` and rollout format are version-sensitive.
-- Entry point and limits: [codex-receiver/README-CODEX.md](codex-receiver/README-CODEX.md).
+- Entry, owner opt-in and limits: [codex-receiver/README-CODEX.md](codex-receiver/README-CODEX.md).
 - Test separately: `node --test codex-receiver/tests/*.test.mjs`.
-- No npm publication or official Codex marketplace/plugin mounting; real third-party cold install, sign-out/reboot recovery, multi-day soak, and broad upgrade matrices remain NOT_RUN.
+- The receiver is not published as a separate npm package and has no official Codex marketplace/plugin mounting; real third-party cold install, sign-out/reboot recovery, multi-day soak, and broad upgrade matrices remain NOT_RUN.
 
 ## Uninstall
 
@@ -144,8 +144,10 @@ The installer keeps byte-level backups and only removes its own profile rows. If
 - Manual pairing; no discovery wizard.
 - CLI only; no GUI.
 - DSH profile mutation is version-sensitive; keep the generated backups.
-- The DSH bundle excludes the Codex native queue receiver; the repository provides a separate experimental optional source package, not a default install.
-- The DSH bundle excludes the experimental Codex native queue receiver; MCP App and host-management modules are excluded. An optional Codex receiver source package is present in `codex-receiver/` with its own experimental limits.
+- The npm bundle includes optional Codex receiver source/worker/shared-core/metadata; receivers and workers are disabled by default and require real original-owner opt-in/enable.
+- MCP App and host-management modules remain excluded; legacy/source-link installs remain separate and are not auto-migrated.
+- Restricted client request/reply is integrated; see [CLIENT-ACCESS](docs/CLIENT-ACCESS.md). One local Codex MRI request/reply was validated; cloud dot business acceptance and loading the new plugin in the current DSH host remain unverified.
+- Companion lifecycle/install modes: [COMPANION-LIFECYCLE](docs/COMPANION-LIFECYCLE.md).
 - No independent cold-machine validation yet.
 - API and state formats may change between 0.x releases.
 - Support is best-effort; there is no SLA.

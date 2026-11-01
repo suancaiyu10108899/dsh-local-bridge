@@ -35,6 +35,8 @@ export function serverInfoHealth({ serverInfoFile }) {
     address: info.address,
     started_at: info.started_at,
     server_id: info.server_id,
+    package_version: info.package_version ?? null,
+    code_identity: info.code_identity ?? null,
     pidAlive: alive,
     stale: !alive,
   };

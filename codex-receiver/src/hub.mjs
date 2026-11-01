@@ -40,6 +40,11 @@ export class BridgeHub {
   #port;
   #ackTimeoutMs;
   #maxAttempts;
+  #targetBinding;
+  #installationId = null;
+  #instanceId = null;
+  #protocolVersion = null;
+  #ownerMode = null;
   #logger;
   #server = null;
   #startedAt = null;
@@ -56,6 +61,11 @@ export class BridgeHub {
     this.#port = options.port ?? 0;
     this.#ackTimeoutMs = options.ackTimeoutMs ?? 10_000;
     this.#maxAttempts = options.maxAttempts ?? 5;
+    this.#targetBinding = typeof options.targetBinding === 'function' ? options.targetBinding : null;
+    this.#installationId = typeof options.installation?.installation_id === 'string' ? options.installation.installation_id : null;
+    this.#instanceId = typeof options.installation?.instance_id === 'string' ? options.installation.instance_id : null;
+    this.#protocolVersion = Number.isInteger(options.installation?.protocol_version) ? options.installation.protocol_version : null;
+    this.#ownerMode = typeof options.installation?.hub_owner_kind === 'string' ? options.installation.hub_owner_kind : null;
     this.#logger = options.logger ?? (() => {});
   }
 
@@ -254,7 +264,28 @@ export class BridgeHub {
       type: 'welcome',
       ok: true,
       identity: client.identity,
-      server: { server_id: this.#store.serverId, started_at: this.#startedAt },
+      installation_id: this.#installationId,
+      instance_id: this.#instanceId,
+      protocol_version: this.#protocolVersion,
+      owner_mode: this.#ownerMode,
+      capabilities: {
+        target_binding_epoch: this.#targetBinding !== null
+          && this.#installationId !== null
+          && this.#instanceId !== null,
+      },
+      server: {
+        server_id: this.#store.serverId,
+        started_at: this.#startedAt,
+        installation_id: this.#installationId,
+        instance_id: this.#instanceId,
+        protocol_version: this.#protocolVersion,
+        owner_mode: this.#ownerMode,
+        capabilities: {
+          target_binding_epoch: this.#targetBinding !== null
+            && this.#installationId !== null
+            && this.#instanceId !== null,
+        },
+      },
       now: iso(Date.now()),
     });
     this.#log('hub/client-connected', { role: client.role, identity: client.identity });
@@ -281,7 +312,7 @@ export class BridgeHub {
       this.#reject(client, frame.request_id, validation.code, validation.message);
       return;
     }
-    const envelope = validation.envelope;
+    let envelope = validation.envelope;
     if (identityRole(envelope.from) !== client.role) {
       this.#reject(client, frame.request_id, 'source-role-mismatch', `client role ${client.role} cannot send as ${envelope.from}`);
       return;
@@ -297,6 +328,20 @@ export class BridgeHub {
     if (!this.#store.isPairedTarget(envelope.to)) {
       this.#reject(client, frame.request_id, 'target-unpaired', `target ${envelope.to} is not paired/enabled`);
       return;
+    }
+    if (this.#targetBinding !== null) {
+      let bound;
+      try {
+        bound = this.#targetBinding(envelope);
+      } catch (error) {
+        this.#reject(client, frame.request_id, error?.code ?? 'target-binding-failed', String(error?.message ?? error));
+        return;
+      }
+      if (bound === null || typeof bound !== 'object' || bound.ok !== true) {
+        this.#reject(client, frame.request_id, bound?.code ?? 'target-binding-failed', bound?.message ?? 'target binding could not be resolved');
+        return;
+      }
+      envelope = bound.envelope;
     }
     let result;
     try {

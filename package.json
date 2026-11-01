@@ -1,6 +1,6 @@
 {
   "name": "dsh-local-bridge",
-  "version": "0.1.0-alpha.6",
+  "version": "0.1.0-alpha.7",
   "private": false,
   "description": "Durable same-machine messaging between DeepSeek Harness (DSH) conversations: local hub, DSH host plugin, CLI.",
   "type": "module",
@@ -36,6 +36,10 @@
   "files": [
     "adapters",
     "bin",
+    "companion",
+    "codex-receiver/adapters",
+    "codex-receiver/package.json",
+    "codex-receiver/src",
     "cordis.patch.yml",
     "docs",
     "hub",

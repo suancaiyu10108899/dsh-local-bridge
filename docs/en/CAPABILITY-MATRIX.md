@@ -12,13 +12,15 @@
 | DSH inbound delivery + wake | Supported | Delivery ACK after durable inbox event |
 | DSH↔DSH cross-session messaging | Supported | Manual pairing; one machine |
 | Retry/TTL/dedupe | Supported | Retry does not prove delivery |
-| Hub restart persistence | Supported | Foreground process; no service |
+| Hub restart persistence | Supported | COMPANION_OWNED may manage/restart its own Hub; legacy/source-link may use a foreground CLI; no Windows Task |
 | Reversible plugin install/uninstall | Supported | Byte-level backups where safe |
+| Managed Hub / companion lifecycle | Supported (default for installed mode) | Detached companion ensures/reuses/bounded-restarts Hub; explicitly ENABLED receiver members restored; no Windows Task/login entry |
+| Receiver enable/disable/renew | Supported (owner-only) | Explicit receiver-control operation by the real original owner; COMPANION_OWNED restores only ENABLED members |
 | Multiple targets | Not supported | One target per message; no routing |
 | Cross-machine / cloud | Not supported | Loopback only |
 | GUI / settings UI | Not supported | CLI only |
-| Unattended service / autostart | Not supported | Manual start |
-| Codex native queue receiver | Experimental, excluded | Build-specific; separate lane |
+| Unattended service / autostart | Not supported | No Windows Task/login item; DSH open may ensure companion, but the host does not self-start |
+| Codex native queue receiver | Experimental; source/worker shipped, disabled by default | `codex-receiver/` MIT shared core/worker/metadata; real original-owner opt-in/enable required; no marketplace |
 | MCP App integration | Not supported | Separate experiment |
 | Host-management tools | Not included in this alpha | Excluded to keep the supported surface small |
 | Independent cold-machine validation | Not done | Please report your environment |

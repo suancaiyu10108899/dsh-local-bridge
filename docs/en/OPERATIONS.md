@@ -41,6 +41,10 @@ node bin/lab-bridge.mjs status --to 'dsh:session-<session-id>' --limit 10
 
 `send` from the CLI uses the `cli` operator role. To declare (not impersonate) a source, use `--origin`; `--from codex:...` is intentionally rejected.
 
+## Optional Codex receiver
+
+The npm bundle includes optional `codex-receiver/` source, worker entry, shared core and metadata. Receiver workers are **disabled by default**; only the real original Codex owner can opt in/enable through the installed core CLI. A COMPANION_OWNED companion restores only explicitly ENABLED members with `owner_opt_in=true`; it does not auto-enable or expand targets. Legacy/source-link installs remain separate. See [CLIENT-ACCESS](../CLIENT-ACCESS.md) for restricted client request/reply and [COMPANION-LIFECYCLE](../COMPANION-LIFECYCLE.md) for companion/Hub lifecycle.
+
 ## Consume
 
 If a recipient handles a message outside the plugin (for example, an active agent consumes it with official tools), record it:
@@ -66,7 +70,8 @@ node bin/lab-bridge.mjs uninstall-dsh-plugin
 
 ## Hub lifecycle
 
-- The hub is a foreground CLI process; there is no service/autostart in this alpha.
+- Installed mode defaults to COMPANION_OWNED: a DSH startup ensures a detached companion; the companion starts/reuses/bounded-restarts its own Hub and restores explicitly ENABLED receiver members without a Windows Task or login entry. Legacy/source-link mode without a companion/locator can still use a foreground CLI Hub.
+- Companion/Hub explicit-stop, startup-budget and owner semantics: [COMPANION-LIFECYCLE](../COMPANION-LIFECYCLE.md).
 - State is durable across hub restarts.
 - If the hub is down, the DSH plugin retries and the host keeps running. Starting the hub later is safe.
 

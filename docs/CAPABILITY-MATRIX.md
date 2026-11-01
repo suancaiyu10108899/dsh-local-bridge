@@ -10,18 +10,18 @@
 | DSH 入站投递 + 唤醒 | 支持 | durable inbox 事件后才 ACK |
 | DSH↔DSH 跨会话消息 | 支持 | 手动配对；单机 |
 | 重试/TTL/去重 | 支持 | 重试不代表投递成功 |
-| Hub 重启持久化 | 支持 | 前台进程；无服务 |
+| Hub 重启持久化 | 支持 | COMPANION_OWNED 可托管/重启自有 Hub；legacy/source-link 可用前台 CLI，无 Windows Task |
 | 可逆插件安装/卸载 | 支持 | 安全时按字节备份 |
 | DSH bundle 安装（GitHub/本地） | 支持（alpha） | 需要 DSH 0.2.1-rc.2 与 pnpm |
 | managed Hub 子进程 | 支持（默认） | 插件启动/复用/停止自有 Hub；异常退出有界退避自动重启；`manageHub:false` 可外部管理 |
 | receiver 状态只读 | 支持 | daily/legacy 模式；`receiver-status` / `check` 按目标 warning / `status` delivery_hint；不启动、不续期、不替换 adapter |
 | companion 状态工具 | 支持（只读） | `service-status` / `bridge_service_status`；Hub、接收端、managed Hub 重启状态 |
-| receiver enable/disable/renew | 不支持 | 下一阶段生命周期工作 |
+| receiver enable/disable/renew | 支持（owner-only） | 通过 receiver-control/真实原 owner 显式操作；COMPANION_OWNED 只恢复已 ENABLED 成员 |
 | 多目标 | 不支持 | 每条消息一个目标；无路由 |
 | 跨机 / 云 | 不支持 | 仅 loopback |
 | GUI / 设置界面 | 不支持 | 只有 CLI |
-| 无人值守服务 / 自启动 | 不支持 | 插件可托管 Hub，但宿主本身不自启动 |
-| Codex native queue receiver | 实验性，公共仓可选源码 | `codex-receiver/`，MIT、精确导出、独立测试；不被 DSH bundle 安装/启动，无 marketplace |
+| 无人值守服务 / 自启动 | 不支持 | 无 Windows Task/登录项；DSH 打开时可确保 companion，宿主本身不自启动 |
+| Codex native queue receiver | 实验性，源码/worker 随包附带但默认关闭 | `codex-receiver/` MIT shared core/worker/metadata；真实原 owner opt-in/enable；无 marketplace |
 | MCP App 集成 | 不支持 | 独立实验 |
 | host-management 工具 | 未包含在本 alpha | 为缩小支持面而排除 |
 | 独立冷机验证 | 未做 | 欢迎报告你的环境 |

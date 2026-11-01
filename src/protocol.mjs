@@ -38,10 +38,10 @@ export function isTerminalState(state) {
 }
 
 /** Roles allowed by the hub. CLI is an operator surface, not a chat peer. */
-export const ROLES = Object.freeze(['dsh', 'codex', 'cli']);
+export const ROLES = Object.freeze(['dsh', 'codex', 'cli', 'client']);
 
 /** Identities are `role:opaque-id`; the opaque part must be non-empty. */
-const IDENTITY_RE = /^(dsh|codex|cli):[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
+const IDENTITY_RE = /^(dsh|codex|cli|client):[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
 const MESSAGE_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 
 export function identityRole(identity) {

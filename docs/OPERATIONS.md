@@ -62,7 +62,8 @@ node bin/lab-bridge.mjs status --to 'codex:<thread>' --state queued
 - `status` 对排队中的 Codex 消息给出 `delivery_hint`：absent/expired/waiting/ready/backoff/rate-limited/paused-uncertain/disabled 等。
 - **daily 模式**：`mode=daily`、`enabled=true`、`expires_at=null` 表示持续启用，**null expiry 不是过期**；滚动 `max/used/remaining native submissions` 和 `next_eligible_at` 表示限流（`RATE_LIMITED` 延迟而非终止）；`BACKOFF` 是自动 Hub 重连退避；`PAUSED_UNCERTAIN` 需人工检查，不能盲目重试。
 - legacy bounded 窗口仍兼容：`expires_at` 字符串到期显示 `expired`；两者都只读展示。
-- 本 alpha 不包含 receiver 本体；enable/disable/renew 属于 receiver owner 的后续工作。
+- npm 包现已附带可选的 `codex-receiver/` 源码、worker 入口、shared core 和 metadata；但 receiver/worker **默认不启用**。enable/disable/renew/owner 恢复属于真实原 Codex owner 的显式操作；COMPANION_OWNED 只恢复已 ENABLED 且 owner_opt_in=true 的成员，不会自动启用新目标。legacy/source-link 模式保持独立说明。
+- 受限 client request/reply 见 [CLIENT-ACCESS](CLIENT-ACCESS.md)；companion/Hub 生命周期见 [COMPANION-LIFECYCLE](COMPANION-LIFECYCLE.md)。
 
 ## 配对
 
@@ -122,7 +123,8 @@ node bin/lab-bridge.mjs uninstall-dsh-plugin
 
 ## Hub 生命周期
 
-- Hub 是前台 CLI 进程；本 alpha 没有服务/自启动。
+- 安装模式默认使用 COMPANION_OWNED：DSH 启动时确保 detached companion；companion 启动/复用/有界重启自有 Hub，并在不使用 Windows Task、不创建登录项的前提下恢复已显式 ENABLED 的 receiver 成员。没有 companion/locator 的 legacy/source-link 模式仍可用前台 CLI 手动启动 Hub。
+- companion/Hub 的 explicit stop、自启动预算和 owner 语义见 [COMPANION-LIFECYCLE](COMPANION-LIFECYCLE.md)。
 - 状态跨 Hub 重启持久。
 - Hub 关闭时，DSH 插件会重试，宿主保持运行；稍后启动 Hub 是安全的。
 

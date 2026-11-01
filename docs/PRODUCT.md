@@ -38,7 +38,7 @@
    - `bridge_service_status`：只读查看 Hub、连接、managed Hub 重启状态和 receiver 状态。
 
 5. **可选 Codex 支持面（实验性，已获精确导出批准）**
-   - 公开仓的 `codex-receiver/` 是独立 optional CLI source package，MIT，source `c1da001`；不进入 DSH bundle、不自动启动/登录/扩目标。
+   - 公开仓和 npm bundle 附带 `codex-receiver/` 的可选源码、worker 入口、shared core 和 metadata，MIT；receiver 默认不启用，必须由真实原 owner opt-in/enable，COMPANION_OWNED 只恢复已 ENABLED 成员；不自动登录/扩目标。legacy/source-link 模式保持独立说明。
    - target-scoped receiver：每个 Codex 目标只拉取自己的消息，不注册/替换全局 Codex adapter。
    - daily 模式：无固定期限、滚动提交限额、显式 disable/renew；状态可见。
    - 没有 npm 发布、官方 Codex marketplace/plugin 挂载；第三方冷安装/重启恢复/soak/升级矩阵仍 NOT_RUN。
